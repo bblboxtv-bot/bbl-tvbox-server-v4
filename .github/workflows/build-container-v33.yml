@@ -1,8 +1,8 @@
 name: Build Container V3.3 APK
 
 on:
-  push:
-    branches: [ container-v33-build ]
+  pull_request:
+    branches: [ main ]
     paths:
       - 'container-v33/**'
       - '.github/workflows/build-container-v33.yml'
@@ -15,45 +15,32 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '21'
-
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
-
       - name: Install Android packages
         run: |
           yes | sdkmanager --licenses >/dev/null || true
           sdkmanager "platforms;android-35" "build-tools;35.0.0" "ndk;29.0.13846066"
-
       - name: Unpack source
         run: |
           mkdir -p /tmp/v33
           unzip -q container-v33/NOVO_PROJETO_CONTAINER_TVBOX_V3_3_TELA_BRANCA_CORRIGIDA.zip -d /tmp/v33
-
       - name: Vendor BlackBox
         working-directory: /tmp/v33/NOVO_PROJETO_CONTAINER_TVBOX_V3/android-app
         run: bash setup_blackbox.sh
-
       - name: Install Gradle 8.9
         run: |
           wget -q https://services.gradle.org/distributions/gradle-8.9-bin.zip -O /tmp/gradle.zip
           unzip -q /tmp/gradle.zip -d /tmp
           echo "/tmp/gradle-8.9/bin" >> "$GITHUB_PATH"
-
       - name: Build APK
         working-directory: /tmp/v33/NOVO_PROJETO_CONTAINER_TVBOX_V3/android-app
         run: gradle --no-daemon :app:assembleBlackboxDebug
-
-      - name: Verify APK
-        run: |
-          test -f /tmp/v33/NOVO_PROJETO_CONTAINER_TVBOX_V3/android-app/app/build/outputs/apk/blackbox/debug/app-blackbox-debug.apk
-          ls -lh /tmp/v33/NOVO_PROJETO_CONTAINER_TVBOX_V3/android-app/app/build/outputs/apk/blackbox/debug/app-blackbox-debug.apk
-
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
