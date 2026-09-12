@@ -1,16 +1,11 @@
 package com.bbl.container
 
 import android.app.Application
-import android.content.Context
-import android.util.Log
 
 class ContainerApplication : Application() {
-    override fun attachBaseContext(base: Context) {
-        super.attachBaseContext(base)
-        runCatching { VirtualEngineProvider.create().attach(base) }
-            .onFailure { Log.e("BBLContainer", "BlackBox attach failed", it) }
-    }
     override fun onCreate() {
         super.onCreate()
+        // O motor virtual é inicializado somente depois que a tela principal já foi desenhada.
+        // Isso evita travar a abertura da aplicação em algumas TV Boxes.
     }
 }
