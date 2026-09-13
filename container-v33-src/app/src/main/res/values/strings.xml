@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">BBL Container</string>
+    <string name="server_url">https://bbl-tvbox-manager-v2.onrender.com</string>
+</resources>
