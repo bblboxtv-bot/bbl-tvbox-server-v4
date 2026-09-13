@@ -139,6 +139,7 @@ def add_priority_route(path, endpoint, methods):
 
 
 add_priority_route("/painel/apps/upload", persistent_apps_upload, ["POST"])
+add_priority_route("/admin/apps/upload", persistent_apps_upload, ["POST"])
 add_priority_route("/api/apps/{aid}/download", persistent_app_download, ["GET"])
 
 app = main.app
