@@ -9,6 +9,7 @@ import android.os.Looper
 import android.provider.Settings
 import android.util.Log
 import android.view.Gravity
+import android.view.View
 import android.view.ViewGroup
 import android.widget.*
 import java.io.File
@@ -26,6 +27,9 @@ class MainActivity : Activity() {
     @Volatile private var engineReady = false
     @Volatile private var engineError: String? = null
 
+    private val bgNormal = Color.rgb(40, 43, 49)
+    private val bgFocused = Color.rgb(100, 104, 112)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         window.decorView.setBackgroundColor(Color.rgb(13, 15, 19))
@@ -41,7 +45,7 @@ class MainActivity : Activity() {
             status.text = "Digite o código de ativação para liberar os aplicativos."
         }
 
-        Handler(Looper.getMainLooper()).postDelayed({ bootstrapEngine() }, 1200)
+        Handler(Looper.getMainLooper()).postDelayed({ bootstrapEngine() }, 700)
     }
 
     private fun buildUi() {
@@ -69,12 +73,21 @@ class MainActivity : Activity() {
         code = EditText(this).apply {
             hint = "Código de ativação"
             setTextColor(Color.WHITE)
-            setHintTextColor(Color.GRAY)
+            setHintTextColor(Color.LTGRAY)
             isSingleLine = true
             setPadding(dp(14), dp(8), dp(14), dp(8))
+            setBackgroundColor(bgNormal)
+            isFocusable = true
+            isFocusableInTouchMode = true
+            setOnFocusChangeListener { v, hasFocus ->
+                v.setBackgroundColor(if (hasFocus) bgFocused else bgNormal)
+            }
         }
-        activate = Button(this).apply { text = "ATIVAR"; isFocusable = true }
-        refresh = Button(this).apply { text = "ATUALIZAR APPS"; isFocusable = true }
+        activate = Button(this).apply { text = "ATIVAR" }
+        refresh = Button(this).apply { text = "ATUALIZAR APPS" }
+        styleTvButton(activate)
+        styleTvButton(refresh)
+
         row.addView(code, LinearLayout.LayoutParams(dp(340), ViewGroup.LayoutParams.WRAP_CONTENT))
         row.addView(activate, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { leftMargin = dp(10) })
         row.addView(refresh, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { leftMargin = dp(10) })
@@ -101,6 +114,18 @@ class MainActivity : Activity() {
         root.addView(section)
         root.addView(scroll, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
         setContentView(root)
+    }
+
+    private fun styleTvButton(button: Button) {
+        button.isFocusable = true
+        button.isFocusableInTouchMode = true
+        button.setTextColor(Color.WHITE)
+        button.setBackgroundColor(bgNormal)
+        button.setPadding(dp(18), dp(10), dp(18), dp(10))
+        button.setOnFocusChangeListener { v, hasFocus ->
+            v.setBackgroundColor(if (hasFocus) bgFocused else bgNormal)
+            v.alpha = if (hasFocus) 1.0f else 0.92f
+        }
     }
 
     private fun activateDevice() {
@@ -169,51 +194,65 @@ class MainActivity : Activity() {
                 text = "${app.name}\n${app.packageName}  •  ${app.version}\nBAIXAR / ABRIR"
                 textSize = 18f
                 gravity = Gravity.START or Gravity.CENTER_VERTICAL
-                isFocusable = true
                 setPadding(dp(20), dp(14), dp(20), dp(14))
                 setOnClickListener { prepareAndRun(app) }
             }
+            styleTvButton(button)
             appsBox.addView(button, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin = dp(10) })
         }
     }
 
     private fun bootstrapEngine() {
         thread(name = "bbl-engine-init") {
-            runCatching {
-                val engine = VirtualEngineProvider.create()
-                engine.attach(applicationContext)
-                engine.init(applicationContext)
-                check(engine.status().available) { engine.status().details }
-            }.onSuccess {
-                engineReady = true
-                runOnUiThread {
-                    if (status.text.toString().contains("motor", ignoreCase = true)) status.text = "Motor virtual pronto."
-                }
-            }.onFailure {
-                engineError = "Motor virtual indisponível: ${it.message ?: it.javaClass.simpleName}"
-                Log.e("BBLContainer", engineError, it)
-                runOnUiThread {
-                    if (status.text.isNullOrBlank()) status.text = engineError
-                }
+            ensureEngineReady()
+        }
+    }
+
+    private fun ensureEngineReady(): Boolean {
+        if (engineReady) return true
+        return runCatching {
+            val engine = VirtualEngineProvider.create()
+            // attachBaseContext do Application já fez o attach correto; esta chamada é segura caso necessário.
+            engine.attach(applicationContext)
+            engine.init(applicationContext)
+            check(engine.status().available) { engine.status().details }
+            engineReady = true
+            engineError = null
+            true
+        }.getOrElse {
+            engineReady = false
+            engineError = "Motor virtual indisponível: ${it.message ?: it.javaClass.simpleName}"
+            Log.e("BBLContainer", engineError, it)
+            false
+        }.also { ok ->
+            runOnUiThread {
+                if (ok && status.text.toString().contains("motor", ignoreCase = true)) status.text = "Motor virtual pronto."
             }
         }
     }
 
     private fun prepareAndRun(a: CatalogApp) {
-        if (!engineReady) {
-            status.text = engineError ?: "Motor virtual ainda está iniciando. Aguarde alguns segundos e tente novamente."
-            return
-        }
-        val engine = VirtualEngineProvider.create()
         status.text = "Baixando ${a.name}..."
         thread {
             val f = File(filesDir, "virtual_apps/${a.id}.apk")
             f.parentFile?.mkdirs()
             runCatching {
-                if (!f.exists() || (a.sha256.isNotBlank() && !ApiClient.sha256(f).equals(a.sha256, true))) api.download(a.downloadUrl, f)
+                // O download acontece mesmo que o motor ainda não esteja pronto.
+                if (!f.exists() || (a.sha256.isNotBlank() && !ApiClient.sha256(f).equals(a.sha256, true))) {
+                    api.download(a.downloadUrl, f)
+                }
+                require(f.exists() && f.length() > 0) { "O APK não foi baixado corretamente" }
                 if (a.sha256.isNotBlank()) require(ApiClient.sha256(f).equals(a.sha256, true)) { "Arquivo baixado não passou na verificação SHA-256" }
+
                 val parsedPkg = packageManager.getPackageArchiveInfo(f.absolutePath, PackageManager.GET_META_DATA)?.packageName
                 require(parsedPkg == a.packageName) { "APK inválido: pacote ${parsedPkg ?: "desconhecido"}, esperado ${a.packageName}" }
+
+                runOnUiThread { status.text = "Download concluído. Iniciando motor virtual..." }
+                if (!ensureEngineReady()) {
+                    throw IllegalStateException(engineError ?: "Motor virtual não iniciou")
+                }
+
+                val engine = VirtualEngineProvider.create()
                 runOnUiThread { status.text = "Instalando ${a.name} dentro do BBL Container..." }
                 engine.installVirtual(f, a.packageName).getOrThrow()
                 appState.edit().putString("pkg_${a.id}", a.packageName).apply()
