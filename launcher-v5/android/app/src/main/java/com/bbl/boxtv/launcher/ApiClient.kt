@@ -41,7 +41,7 @@ internal object ApiClient {
     }
 
     fun enroll(deviceId: String, activationCode: String): String {
-        val c = URL("$" + "{apiBaseUrl}/api/enroll").openConnection() as HttpURLConnection
+        val c = URL(apiBaseUrl + "/api/enroll").openConnection() as HttpURLConnection
         try {
             c.doOutput = true
             c.connectTimeout = 10000
@@ -69,12 +69,12 @@ internal object ApiClient {
 
     fun getPolicy(deviceId: String, token: String): DeviceConfig {
         val id = URLEncoder.encode(deviceId, "UTF-8")
-        val c = URL("$" + "{apiBaseUrl}/api/devices/$" + "{id}/policy").openConnection() as HttpURLConnection
+        val c = URL(apiBaseUrl + "/api/devices/" + id + "/policy").openConnection() as HttpURLConnection
         try {
             c.connectTimeout = 10000
             c.readTimeout = 10000
             c.requestMethod = "GET"
-            c.setRequestProperty("Authorization", "Bearer $" + "token")
+            c.setRequestProperty("Authorization", "Bearer " + token)
             c.setRequestProperty("Accept", "application/json")
             val code = c.responseCode
             if (code !in 200..299) throw HttpStatusException(code)
@@ -109,7 +109,7 @@ internal object ApiClient {
     fun downloadApk(app: RemoteApp, destination: File) {
         val value = app.downloadUrl.trim()
         if (value.isBlank()) error("Aplicativo sem URL de download")
-        val url = if (value.startsWith("http://") || value.startsWith("https://")) value else "$" + "{apiBaseUrl}/" + value.trimStart('/')
+        val url = if (value.startsWith("http://") || value.startsWith("https://")) value else apiBaseUrl + "/" + value.trimStart('/')
         val c = URL(url).openConnection() as HttpURLConnection
         try {
             c.connectTimeout = 15000
@@ -140,5 +140,5 @@ internal object ApiClient {
     }
 
     internal class HttpStatusException(val code: Int, val body: String = "") :
-        RuntimeException("HTTP $" + "code $" + "body")
+        RuntimeException("HTTP " + code + " " + body)
 }
