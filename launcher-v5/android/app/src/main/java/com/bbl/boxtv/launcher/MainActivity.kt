@@ -121,7 +121,7 @@ class MainActivity : Activity() {
             background=panelBg(14); isFocusable=true; setPadding(dp(8),dp(6),dp(8),dp(6)); setOnClickListener{click()}
             setOnFocusChangeListener { v, has -> v.scaleX=if(has)1.06f else 1f; v.scaleY=if(has)1.06f else 1f }
         }
-        actions.addView(shortcut("▦","Apps"){ renderAppsOnly() }, LinearLayout.LayoutParams(dp(94),dp(92)).apply{rightMargin=dp(8)})
+        actions.addView(shortcut("▦","Apps"){ showHomeFavorites() }, LinearLayout.LayoutParams(dp(94),dp(92)).apply{rightMargin=dp(8)})
         actions.addView(shortcut("▣","Loja"){ showAppStore() }, LinearLayout.LayoutParams(dp(94),dp(92)).apply{rightMargin=dp(8)})
         actions.addView(shortcut("♨","Otimizar"){ Toast.makeText(this,"Otimização concluída",Toast.LENGTH_SHORT).show() }, LinearLayout.LayoutParams(dp(104),dp(92)).apply{rightMargin=dp(8)})
         actions.addView(shortcut("⌁","Wi‑Fi"){ startActivity(Intent(Settings.ACTION_WIFI_SETTINGS)) }, LinearLayout.LayoutParams(dp(94),dp(92)).apply{rightMargin=dp(8)})
@@ -132,28 +132,16 @@ class MainActivity : Activity() {
         status=TextView(this).apply { textSize=13f; setTextColor(Color.rgb(150,190,255)); setPadding(0,dp(3),0,dp(7)) }
         page.addView(status)
 
-        val middle=LinearLayout(this).apply { orientation=LinearLayout.HORIZONTAL }
-
-        val fav=LinearLayout(this).apply { orientation=LinearLayout.VERTICAL }
-        fav.addView(TextView(this).apply {
-            text="★  FAVORITOS"; textSize=18f; setTextColor(Color.WHITE); setTypeface(typeface,Typeface.BOLD); setPadding(dp(10),dp(6),dp(10),dp(6)); background=panelBg(10)
-        },LinearLayout.LayoutParams(dp(220),dp(48)))
-        fav.addView(TextView(this).apply {
-            text="+\nAdicionar"; gravity=Gravity.CENTER; textSize=25f; setTextColor(Color.WHITE); setTypeface(typeface,Typeface.BOLD); background=focusTile()
-            isFocusable=true
-        },LinearLayout.LayoutParams(dp(220),dp(180)).apply{topMargin=dp(12)})
-        middle.addView(fav,LinearLayout.LayoutParams(dp(240),dp(250)))
-
         val hero=HeroView(this).apply { isFocusable=false }
-        middle.addView(hero,LinearLayout.LayoutParams(0,dp(250),1f).apply{leftMargin=dp(14)})
-        page.addView(middle)
+        page.addView(hero,LinearLayout.LayoutParams(-1,dp(250)).apply{topMargin=dp(4)})
 
         page.addView(TextView(this).apply {
-            text="◉  APLICATIVOS ILIMITADOS"; textSize=18f; setTextColor(Color.WHITE); setTypeface(typeface,Typeface.BOLD)
+            text="★  FAVORITOS"; textSize=18f; setTextColor(Color.WHITE); setTypeface(typeface,Typeface.BOLD)
             setPadding(dp(12),dp(7),dp(12),dp(7)); background=panelBg(10)
-        },LinearLayout.LayoutParams(dp(300),dp(46)).apply{topMargin=dp(10)})
+        },LinearLayout.LayoutParams(dp(250),dp(46)).apply{topMargin=dp(10)})
 
-        page.addView(buildAppsRow(cfg.apps),LinearLayout.LayoutParams(-1,0,1f))
+        val favorites=homeFavoriteApps(cfg.apps)
+        page.addView(buildFavoriteRow(favorites),LinearLayout.LayoutParams(-1,0,1f))
         tickClock()
     }
 
@@ -176,7 +164,90 @@ class MainActivity : Activity() {
         status.text=if(cfg.message.isBlank())"ONLINE • Controle remoto ativo" else cfg.message
     }
 
-    private fun renderAppsOnly(){ currentConfig?.let{ render(it) } }
+    private fun showHomeFavorites(){ currentConfig?.let{ render(it) } }
+
+    private fun normalizeName(value:String):String =
+        value.lowercase(Locale.ROOT)
+            .replace(" ", "")
+            .replace(".", "")
+            .replace("_", "")
+            .replace("-", "")
+
+    private fun homeFavoriteApps(apps:List<RemoteApp>):List<RemoteApp>{
+        fun isUni(app:RemoteApp):Boolean{
+            val s=normalizeName(app.label+" "+app.packageName)
+            return s.contains("unitv")
+        }
+        fun isTudo(app:RemoteApp):Boolean{
+            val s=normalizeName(app.label+" "+app.packageName)
+            return s.contains("tudoliberado") || (s.contains("tudo") && s.contains("acesso"))
+        }
+        val result=mutableListOf<RemoteApp>()
+        apps.firstOrNull{isUni(it)}?.let{result.add(it)}
+        apps.firstOrNull{isTudo(it)}?.let{if(result.none{r->r.packageName==it.packageName})result.add(it)}
+        return result
+    }
+
+    private fun buildFavoriteRow(apps:List<RemoteApp>):LinearLayout{
+        val row=LinearLayout(this).apply{
+            orientation=LinearLayout.HORIZONTAL
+            gravity=Gravity.START or Gravity.CENTER_VERTICAL
+            setPadding(0,dp(8),0,0)
+        }
+
+        val uni=apps.firstOrNull{normalizeName(it.label+" "+it.packageName).contains("unitv")}
+        val tudo=apps.firstOrNull{
+            val s=normalizeName(it.label+" "+it.packageName)
+            s.contains("tudoliberado") || (s.contains("tudo") && s.contains("acesso"))
+        }
+
+        row.addView(buildFavoriteCard(uni,"UniTV Free","UN"),LinearLayout.LayoutParams(dp(260),dp(175)).apply{rightMargin=dp(18)})
+        row.addView(buildFavoriteCard(tudo,"Tudo Liberado Acesso","TL"),LinearLayout.LayoutParams(dp(300),dp(175)))
+        return row
+    }
+
+    private fun buildFavoriteCard(app:RemoteApp?,fallbackLabel:String,initials:String):LinearLayout{
+        val installed=app?.let{isInstalled(it.packageName)}?:false
+        return LinearLayout(this).apply{
+            orientation=LinearLayout.VERTICAL
+            gravity=Gravity.CENTER
+            setPadding(dp(12),dp(10),dp(12),dp(10))
+            background=focusTile()
+            isFocusable=app!=null
+            setOnFocusChangeListener{v,h->v.scaleX=if(h)1.06f else 1f;v.scaleY=if(h)1.06f else 1f}
+
+            addView(TextView(this@MainActivity).apply{
+                text=initials
+                gravity=Gravity.CENTER
+                textSize=28f
+                setTextColor(Color.WHITE)
+                setTypeface(typeface,Typeface.BOLD)
+                background=GradientDrawable().apply{
+                    shape=GradientDrawable.OVAL
+                    setColor(if(initials=="UN") Color.rgb(44,145,255) else Color.rgb(255,128,38))
+                }
+            },LinearLayout.LayoutParams(dp(70),dp(70)))
+
+            addView(TextView(this@MainActivity).apply{
+                text=(app?.label?:fallbackLabel)+"\n"+when{
+                    app==null -> "NÃO CONFIGURADO"
+                    installed -> "ABRIR"
+                    else -> "INSTALAR"
+                }
+                gravity=Gravity.CENTER
+                textSize=17f
+                setTextColor(Color.WHITE)
+                setTypeface(typeface,Typeface.BOLD)
+                setPadding(0,dp(8),0,0)
+            },LinearLayout.LayoutParams(-1,dp(72)))
+
+            if(app!=null){
+                setOnClickListener{
+                    if(installed) launchPackage(app.packageName) else requestInstall(app)
+                }
+            }
+        }
+    }
 
     private fun tickClock(){
         if(::clock.isInitialized){
