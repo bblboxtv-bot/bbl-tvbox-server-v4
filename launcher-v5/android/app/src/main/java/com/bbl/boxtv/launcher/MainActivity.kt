@@ -206,7 +206,7 @@ class MainActivity : Activity() {
             } catch (e: Exception) {
                 runOnUiThread {
                     button.isEnabled = true
-                    showActivation("Falha na ativação: $" + "{e.message ?: "servidor indisponível"}")
+                    showActivation("Falha na ativação: " + (e.message ?: "servidor indisponível"))
                 }
             }
         }
