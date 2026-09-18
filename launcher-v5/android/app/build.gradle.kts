@@ -14,8 +14,8 @@ android {
         applicationId = "com.bbl.boxtv.launcher"
         minSdk = 21
         targetSdk = 35
-        versionCode = 10
-        versionName = "2.1.3"
+        versionCode = 11
+        versionName = "2.2.0"
         buildConfigField("String", "API_BASE_URL", "\"${apiBaseUrl.trimEnd('/')}\"")
     }
 
