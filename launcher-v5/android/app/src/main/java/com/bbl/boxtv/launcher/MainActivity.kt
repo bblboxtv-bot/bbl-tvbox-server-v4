@@ -152,7 +152,7 @@ class MainActivity : Activity() {
 
     private fun showActivation(message: String = "") {
         clearContent()
-        clientInfo.text = "CLIENTE\nID: $" + "deviceId\nNÃO ATIVADO"
+        clientInfo.text = "CLIENTE\nID: " + deviceId + "\nNÃO ATIVADO"
         status.text = "Digite o código de ativação"
 
         val box = LinearLayout(this).apply {
@@ -232,7 +232,7 @@ class MainActivity : Activity() {
                     if (e.code == 401) {
                         prefs.edit().remove("device_token").apply()
                         showActivation("Ativação necessária")
-                    } else status.text = "Falha no servidor (HTTP $" + "{e.code})"
+                    } else status.text = "Falha no servidor (HTTP " + e.code + ")"
                 }
             } catch (_: Exception) {
                 runOnUiThread { status.text = "Servidor indisponível" }
@@ -246,7 +246,7 @@ class MainActivity : Activity() {
         clearContent()
         title.text = cfg.brandingName
         if (!cfg.active) {
-            clientInfo.text = "CLIENTE\nID: $" + "deviceId\nBLOQUEADO"
+            clientInfo.text = "CLIENTE\nID: " + deviceId + "\nBLOQUEADO"
             status.text = "ACESSO BLOQUEADO"
             root.addView(TextView(this).apply {
                 text = "Este aparelho está bloqueado. Entre em contato com o administrador."
@@ -258,7 +258,7 @@ class MainActivity : Activity() {
         }
 
         val exp = if (cfg.expiresAt.isBlank()) "SEM VALIDADE" else cfg.expiresAt.take(10)
-        clientInfo.text = "CLIENTE\nID: $" + "deviceId\nATIVO • $" + "exp"
+        clientInfo.text = "CLIENTE\nID: " + deviceId + "\nATIVO • " + exp
         status.text = if (cfg.message.isBlank()) "ATIVO" else cfg.message
 
         root.addView(TextView(this).apply {
@@ -341,7 +341,7 @@ class MainActivity : Activity() {
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !packageManager.canRequestPackageInstalls()) {
             try {
-                startActivity(Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:$" + "packageName")))
+                startActivity(Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:" + packageName)))
             } catch (_: Exception) {
                 startActivity(Intent(Settings.ACTION_SECURITY_SETTINGS))
             }
@@ -399,6 +399,6 @@ internal object DeviceIdentity {
         prefs.getString("device_id", null)?.let { return it }
         val androidId = Settings.Secure.getString(context.contentResolver, Settings.Secure.ANDROID_ID)
         val suffix = (androidId?.takeLast(8) ?: UUID.randomUUID().toString().take(8)).uppercase()
-        return "BOX-$" + "suffix".also { prefs.edit().putString("device_id", it).apply() }
+        return ("BOX-" + suffix).also { prefs.edit().putString("device_id", it).apply() }
     }
 }
