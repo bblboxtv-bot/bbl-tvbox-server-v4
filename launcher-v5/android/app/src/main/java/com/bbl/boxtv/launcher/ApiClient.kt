@@ -6,6 +6,7 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLEncoder
 import java.security.MessageDigest
+import java.util.Locale
 
 internal data class RemoteApp(
     val packageName: String,
@@ -26,6 +27,19 @@ internal data class DeviceConfig(
 internal object ApiClient {
     private val apiBaseUrl = BuildConfig.API_BASE_URL.trimEnd('/')
 
+    fun healthCheck(): String {
+        val c = URL("${apiBaseUrl}/health").openConnection() as HttpURLConnection
+        try {
+            c.connectTimeout = 12000
+            c.readTimeout = 12000
+            c.requestMethod = "GET"
+            val code = c.responseCode
+            val text = (if (code in 200..299) c.inputStream else c.errorStream)?.bufferedReader()?.use { it.readText() }.orEmpty()
+            if (code !in 200..299) throw HttpStatusException(code, text)
+            return text
+        } finally { c.disconnect() }
+    }
+
     fun enroll(deviceId: String, activationCode: String): String {
         val c = URL("$" + "{apiBaseUrl}/api/enroll").openConnection() as HttpURLConnection
         try {
@@ -35,7 +49,7 @@ internal object ApiClient {
             c.requestMethod = "POST"
             c.setRequestProperty("Content-Type", "application/json")
             val body = JSONObject()
-                .put("activationCode", activationCode.trim())
+                .put("activationCode", activationCode.trim().uppercase(Locale.ROOT))
                 .put("deviceId", deviceId)
                 .put("manufacturer", android.os.Build.MANUFACTURER ?: "")
                 .put("model", android.os.Build.MODEL ?: "")
