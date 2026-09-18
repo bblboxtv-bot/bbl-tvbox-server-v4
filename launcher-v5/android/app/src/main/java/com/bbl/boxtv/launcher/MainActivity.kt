@@ -199,14 +199,21 @@ class MainActivity : Activity() {
         status.text = "Ativando..."
         executor.execute {
             try {
+                ApiClient.healthCheck()
                 val token = ApiClient.enroll(deviceId, code)
                 prefs.edit().putString("device_token", token).apply()
                 val cfg = ApiClient.getPolicy(deviceId, token)
                 runOnUiThread { render(cfg) }
+            } catch (e: ApiClient.HttpStatusException) {
+                runOnUiThread {
+                    button.isEnabled = true
+                    val detail = e.body.take(180).replace("\n", " ")
+                    showActivation("Falha na ativação (HTTP " + e.code + "): " + detail)
+                }
             } catch (e: Exception) {
                 runOnUiThread {
                     button.isEnabled = true
-                    showActivation("Falha na ativação: " + (e.message ?: "servidor indisponível"))
+                    showActivation("Falha de conexão: " + e.javaClass.simpleName + " - " + (e.message ?: "sem detalhe"))
                 }
             }
         }
