@@ -293,6 +293,21 @@ class MainActivity : Activity() {
         packageManager.getLaunchIntentForPackage(pkg)?.let{startActivity(it)}?:Toast.makeText(this,"Aplicativo não instalado",Toast.LENGTH_SHORT).show()
     }
 
+    inner class BackdropView(ctx:Context):View(ctx){
+        private val p=Paint(Paint.ANTI_ALIAS_FLAG)
+        override fun onDraw(c:Canvas){
+            super.onDraw(c)
+            val w=width.toFloat(); val h=height.toFloat()
+            p.shader=LinearGradient(0f,0f,w,h,intArrayOf(Color.rgb(1,5,28),Color.rgb(7,15,70),Color.rgb(2,4,22)),null,Shader.TileMode.CLAMP)
+            c.drawRect(0f,0f,w,h,p)
+            p.shader=null
+            p.color=Color.argb(40,20,110,255)
+            c.drawCircle(w*.72f,h*.38f,w*.28f,p)
+            p.color=Color.argb(28,255,130,30)
+            c.drawCircle(w*.68f,h*.52f,w*.19f,p)
+        }
+    }
+
     inner class HeroView(ctx:Context):View(ctx){
         private val p=Paint(Paint.ANTI_ALIAS_FLAG)
         override fun onDraw(c:Canvas){
