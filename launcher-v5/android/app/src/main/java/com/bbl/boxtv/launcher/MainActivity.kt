@@ -42,6 +42,11 @@ class MainActivity : Activity() {
         super.onCreate(savedInstanceState)
         deviceId = DeviceIdentity.get(this)
         buildShell()
+        val preview = DeviceConfig(active = true, apps = emptyList(), brandingName = "BBL.BOXTV", message = "Sincronizando...")
+        currentConfig = preview
+        buildHome(preview)
+        clientCard.text = "CLIENTE\n" + deviceId + "\nSINCRONIZANDO..."
+        status.text = "Conectando ao painel..."
         tickClock()
         if (savedToken().isBlank()) showActivation() else sync()
     }
@@ -93,6 +98,7 @@ class MainActivity : Activity() {
         timeRow.addView(dateText)
         left.addView(timeRow)
         clientCard=TextView(this).apply {
+            text="CLIENTE\n"+deviceId+"\nAGUARDANDO"
             textSize=14f; setTextColor(Color.WHITE); setPadding(dp(14),dp(8),dp(14),dp(8)); background=panelBg(14)
         }
         left.addView(clientCard, LinearLayout.LayoutParams(dp(260),dp(66)).apply { topMargin=dp(8) })
@@ -221,7 +227,12 @@ class MainActivity : Activity() {
                 runOnUiThread{render(cfg)}
             }catch(e:ApiClient.HttpStatusException){
                 runOnUiThread{if(e.code==401){prefs.edit().remove("device_token").apply();showActivation("Ativação necessária")}else Toast.makeText(this,"HTTP "+e.code,Toast.LENGTH_SHORT).show()}
-            }catch(_:Exception){}
+            }catch(e:Exception){
+                runOnUiThread{
+                    if(::status.isInitialized) status.text="Falha ao sincronizar: "+(e.message?:"erro desconhecido")
+                    Toast.makeText(this,"Falha ao sincronizar com o painel",Toast.LENGTH_LONG).show()
+                }
+            }
         }
     }
 
@@ -330,7 +341,11 @@ class MainActivity : Activity() {
 internal object DeviceIdentity{
     fun get(context:Context):String{
         val prefs=context.getSharedPreferences("bbl",Context.MODE_PRIVATE)
-        prefs.getString("device_id",null)?.let{return it}
+        val saved=prefs.getString("device_id",null)
+        if(saved!=null && saved!="suffix" && saved!="deviceId" && !saved.contains("$"+"{") && saved.startsWith("BOX-")) return saved
+        if(saved!=null){
+            prefs.edit().remove("device_id").remove("device_token").apply()
+        }
         val androidId=Settings.Secure.getString(context.contentResolver,Settings.Secure.ANDROID_ID)
         val suffix=(androidId?.takeLast(8)?:UUID.randomUUID().toString().take(8)).uppercase()
         return("BOX-"+suffix).also{prefs.edit().putString("device_id",it).apply()}
