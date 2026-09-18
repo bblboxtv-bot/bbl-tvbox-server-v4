@@ -309,13 +309,34 @@ class MainActivity : Activity() {
         override fun onDraw(c:Canvas){
             super.onDraw(c)
             val w=width.toFloat(); val h=height.toFloat()
-            p.shader=LinearGradient(0f,0f,w,h,intArrayOf(Color.rgb(1,5,28),Color.rgb(7,15,70),Color.rgb(2,4,22)),null,Shader.TileMode.CLAMP)
+
+            p.shader=LinearGradient(0f,0f,w,h,
+                intArrayOf(Color.rgb(2,5,24),Color.rgb(8,16,72),Color.rgb(3,7,35),Color.rgb(18,6,40)),
+                null,Shader.TileMode.CLAMP)
             c.drawRect(0f,0f,w,h,p)
             p.shader=null
-            p.color=Color.argb(40,20,110,255)
-            c.drawCircle(w*.72f,h*.38f,w*.28f,p)
-            p.color=Color.argb(28,255,130,30)
-            c.drawCircle(w*.68f,h*.52f,w*.19f,p)
+
+            p.color=Color.argb(46,35,115,255)
+            c.drawCircle(w*.76f,h*.30f,w*.28f,p)
+            p.color=Color.argb(32,255,128,25)
+            c.drawCircle(w*.64f,h*.53f,w*.20f,p)
+            p.color=Color.argb(22,40,220,255)
+            c.drawCircle(w*.24f,h*.72f,w*.24f,p)
+
+            p.style=Paint.Style.STROKE
+            p.strokeWidth=dp(2).toFloat()
+            for(i in 0..7){
+                p.color=Color.argb(22+i*2,30,130,255)
+                val y=h*(.10f+i*.105f)
+                c.drawLine(0f,y,w,y-dp(80),p)
+            }
+            p.style=Paint.Style.FILL
+
+            p.textAlign=Paint.Align.RIGHT
+            p.typeface=Typeface.DEFAULT_BOLD
+            p.textSize=dp(38).toFloat()
+            p.color=Color.argb(32,255,255,255)
+            c.drawText("BBL.BOXTV",w-dp(28),h-dp(26),p)
         }
     }
 
@@ -323,16 +344,58 @@ class MainActivity : Activity() {
         private val p=Paint(Paint.ANTI_ALIAS_FLAG)
         override fun onDraw(c:Canvas){
             super.onDraw(c)
-            val w=width.toFloat();val h=height.toFloat()
-            p.shader=LinearGradient(0f,0f,w,h,intArrayOf(Color.rgb(5,10,55),Color.rgb(16,34,125),Color.rgb(8,7,42)),null,Shader.TileMode.CLAMP)
-            c.drawRoundRect(0f,0f,w,h,dp(18).toFloat(),dp(18).toFloat(),p)
+            val w=width.toFloat(); val h=height.toFloat()
+
+            p.shader=LinearGradient(0f,0f,w,h,
+                intArrayOf(Color.rgb(9,16,70),Color.rgb(18,35,120),Color.rgb(48,20,74),Color.rgb(10,8,35)),
+                null,Shader.TileMode.CLAMP)
+            c.drawRoundRect(0f,0f,w,h,dp(20).toFloat(),dp(20).toFloat(),p)
             p.shader=null
-            p.color=Color.rgb(255,170,40);p.textAlign=Paint.Align.CENTER;p.typeface=Typeface.DEFAULT_BOLD;p.textSize=dp(52).toFloat()
-            c.drawText("BBL.BOXTV",w*.54f,h*.53f,p)
-            p.color=Color.WHITE;p.textSize=dp(18).toFloat()
-            c.drawText("O MELHOR DO ENTRETENIMENTO EM UM SÓ LUGAR.",w*.54f,h*.69f,p)
-            p.style=Paint.Style.STROKE;p.strokeWidth=dp(2).toFloat();p.color=Color.rgb(30,180,255)
-            c.drawRoundRect(dp(2).toFloat(),dp(2).toFloat(),w-dp(2),h-dp(2),dp(18).toFloat(),dp(18).toFloat(),p)
+
+            p.color=Color.argb(80,255,145,25)
+            c.drawCircle(w*.57f,h*.48f,h*.62f,p)
+            p.color=Color.argb(70,35,150,255)
+            c.drawCircle(w*.28f,h*.42f,h*.52f,p)
+
+            p.textAlign=Paint.Align.CENTER
+            p.typeface=Typeface.DEFAULT_BOLD
+
+            p.textSize=dp(21).toFloat()
+            p.color=Color.rgb(100,220,255)
+            c.drawText("TV AO VIVO   •   FILMES   •   SÉRIES   •   ESPORTES   •   INFANTIL",w*.50f,h*.20f,p)
+
+            p.setShadowLayer(dp(12).toFloat(),0f,0f,Color.rgb(255,105,10))
+            p.textSize=dp(58).toFloat()
+            p.color=Color.rgb(255,178,55)
+            c.drawText("BBL.BOXTV",w*.50f,h*.56f,p)
+            p.clearShadowLayer()
+
+            p.textSize=dp(17).toFloat()
+            p.color=Color.WHITE
+            c.drawText("O MELHOR DO ENTRETENIMENTO EM UM SÓ LUGAR",w*.50f,h*.71f,p)
+
+            val badgeW=w*.14f
+            val gap=w*.018f
+            val labels=arrayOf("TV","FILMES","SÉRIES","JOGOS","APPS")
+            var x=w*.5f-(labels.size*badgeW+(labels.size-1)*gap)/2f
+            for(label in labels){
+                p.color=Color.argb(165,10,12,38)
+                c.drawRoundRect(x,h*.78f,x+badgeW,h*.95f,dp(10).toFloat(),dp(10).toFloat(),p)
+                p.style=Paint.Style.STROKE
+                p.strokeWidth=dp(1).toFloat()
+                p.color=Color.rgb(255,174,55)
+                c.drawRoundRect(x,h*.78f,x+badgeW,h*.95f,dp(10).toFloat(),dp(10).toFloat(),p)
+                p.style=Paint.Style.FILL
+                p.textSize=dp(13).toFloat()
+                p.color=Color.WHITE
+                c.drawText(label,x+badgeW/2f,h*.89f,p)
+                x+=badgeW+gap
+            }
+
+            p.style=Paint.Style.STROKE
+            p.strokeWidth=dp(2).toFloat()
+            p.color=Color.rgb(40,185,255)
+            c.drawRoundRect(dp(2).toFloat(),dp(2).toFloat(),w-dp(2),h-dp(2),dp(20).toFloat(),dp(20).toFloat(),p)
             p.style=Paint.Style.FILL
         }
     }
