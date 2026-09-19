@@ -58,6 +58,16 @@ class MainActivity : Activity() {
         if (savedToken().isBlank()) showActivation() else sync()
     }
 
+    override fun onBackPressed() {
+        val cfg=currentConfig
+        if(cfg!=null){
+            render(cfg)
+        }else{
+            // Launcher home should never close on BACK.
+            moveTaskToBack(false)
+        }
+    }
+
     override fun onResume() {
         super.onResume()
         if (::deviceId.isInitialized && savedToken().isNotBlank()) sync()
