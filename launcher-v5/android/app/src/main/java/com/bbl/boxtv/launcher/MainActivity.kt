@@ -12,6 +12,13 @@ import android.graphics.Paint
 import android.graphics.Shader
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
+import android.graphics.drawable.Drawable
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.widget.ImageView
+import com.google.zxing.BarcodeFormat
+import com.google.zxing.MultiFormatWriter
+import com.google.zxing.common.BitMatrix
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -121,7 +128,7 @@ class MainActivity : Activity() {
             background=panelBg(14); isFocusable=true; setPadding(dp(8),dp(6),dp(8),dp(6)); setOnClickListener{click()}
             setOnFocusChangeListener { v, has -> v.scaleX=if(has)1.06f else 1f; v.scaleY=if(has)1.06f else 1f }
         }
-        actions.addView(shortcut("▦","Apps"){ showHomeFavorites() }, LinearLayout.LayoutParams(dp(94),dp(92)).apply{rightMargin=dp(8)})
+        actions.addView(shortcut("☎","Suporte"){ showSupportScreen() }, LinearLayout.LayoutParams(dp(104),dp(92)).apply{rightMargin=dp(8)})
         actions.addView(shortcut("▣","Loja"){ showAppStore() }, LinearLayout.LayoutParams(dp(94),dp(92)).apply{rightMargin=dp(8)})
         actions.addView(shortcut("♨","Otimizar"){ Toast.makeText(this,"Otimização concluída",Toast.LENGTH_SHORT).show() }, LinearLayout.LayoutParams(dp(104),dp(92)).apply{rightMargin=dp(8)})
         actions.addView(shortcut("⌁","Wi‑Fi"){ startActivity(Intent(Settings.ACTION_WIFI_SETTINGS)) }, LinearLayout.LayoutParams(dp(94),dp(92)).apply{rightMargin=dp(8)})
@@ -153,9 +160,7 @@ class MainActivity : Activity() {
         currentConfig=cfg; currentApps=cfg.apps
         if(!cfg.active){
             page.removeAllViews()
-            page.addView(TextView(this).apply{
-                text="ACESSO BLOQUEADO\n\nEste aparelho está bloqueado."; gravity=Gravity.CENTER; textSize=28f; setTextColor(Color.WHITE)
-            },LinearLayout.LayoutParams(-1,-1))
+            showBlockedScreen()
             return
         }
         buildHome(cfg)
@@ -191,6 +196,11 @@ class MainActivity : Activity() {
             pkg=="com.rtxapps.reuse" || pkg.startsWith("com.rtxapps.reuse.")
         }?.let{if(result.none{r->r.packageName==it.packageName})result.add(it)}
           ?: apps.firstOrNull{isTudoNovo(it)}?.let{if(result.none{r->r.packageName==it.packageName})result.add(it)}
+
+        apps.firstOrNull{
+            val s=normalizeName(it.label+" "+it.packageName)
+            s.contains("stvesporte") || s.contains("stvfutebol") || (s.contains("stv") && (s.contains("esporte") || s.contains("futebol")))
+        }?.let{if(result.none{r->r.packageName==it.packageName})result.add(it)}
         return result
     }
 
@@ -210,8 +220,14 @@ class MainActivity : Activity() {
             s.contains("tudoliberado") || (s.contains("tudo") && !s.contains("acesso"))
         }
 
+        val stv=apps.firstOrNull{
+            val s=normalizeName(it.label+" "+it.packageName)
+            s.contains("stvesporte") || s.contains("stvfutebol") || (s.contains("stv") && (s.contains("esporte") || s.contains("futebol")))
+        }
+
         row.addView(buildFavoriteCard(uni,"UniTV Free","UN"),LinearLayout.LayoutParams(dp(260),dp(350)).apply{rightMargin=dp(18)})
-        row.addView(buildFavoriteCard(tudo,"Tudo Liberado","TL"),LinearLayout.LayoutParams(dp(300),dp(350)))
+        row.addView(buildFavoriteCard(tudo,"Tudo Liberado","TL"),LinearLayout.LayoutParams(dp(300),dp(350)).apply{rightMargin=dp(18)})
+        row.addView(buildFavoriteCard(stv,"STV Esporte","ST"),LinearLayout.LayoutParams(dp(260),dp(350)))
         return row
     }
 
@@ -225,17 +241,33 @@ class MainActivity : Activity() {
             isFocusable=app!=null
             setOnFocusChangeListener{v,h->v.scaleX=if(h)1.06f else 1f;v.scaleY=if(h)1.06f else 1f}
 
-            addView(TextView(this@MainActivity).apply{
-                text=initials
-                gravity=Gravity.CENTER
-                textSize=28f
-                setTextColor(Color.WHITE)
-                setTypeface(typeface,Typeface.BOLD)
+            val iconView=ImageView(this@MainActivity).apply{
+                scaleType=ImageView.ScaleType.FIT_CENTER
+                setPadding(dp(8),dp(8),dp(8),dp(8))
                 background=GradientDrawable().apply{
                     shape=GradientDrawable.OVAL
-                    setColor(if(initials=="UN") Color.rgb(44,145,255) else Color.rgb(255,128,38))
+                    setColor(when(initials){
+                        "UN" -> Color.rgb(44,145,255)
+                        "ST" -> Color.rgb(35,180,120)
+                        else -> Color.rgb(255,128,38)
+                    })
                 }
-            },LinearLayout.LayoutParams(dp(105),dp(105)))
+                if(app!=null && installed){
+                    try{ setImageDrawable(packageManager.getApplicationIcon(app.packageName)) }catch(_:Exception){}
+                }
+            }
+            if(iconView.drawable!=null){
+                addView(iconView,LinearLayout.LayoutParams(dp(105),dp(105)))
+            }else{
+                addView(TextView(this@MainActivity).apply{
+                    text=initials
+                    gravity=Gravity.CENTER
+                    textSize=28f
+                    setTextColor(Color.WHITE)
+                    setTypeface(typeface,Typeface.BOLD)
+                    background=iconView.background
+                },LinearLayout.LayoutParams(dp(105),dp(105)))
+            }
 
             addView(TextView(this@MainActivity).apply{
                 text=(app?.label?:fallbackLabel)+"\n"+when{
@@ -316,6 +348,85 @@ class MainActivity : Activity() {
         }
     }
 
+    private val supportNumber = "21 98851-0594"
+    private val supportWhatsApp = "5521988510594"
+
+    private fun qrBitmap(content:String,size:Int):Bitmap{
+        val matrix:BitMatrix=MultiFormatWriter().encode(content,BarcodeFormat.QR_CODE,size,size)
+        val bmp=Bitmap.createBitmap(size,size,Bitmap.Config.RGB_565)
+        for(x in 0 until size) for(y in 0 until size){
+            bmp.setPixel(x,y,if(matrix.get(x,y)) Color.BLACK else Color.WHITE)
+        }
+        return bmp
+    }
+
+    private fun showSupportScreen(){
+        page.removeAllViews()
+        val box=LinearLayout(this).apply{
+            orientation=LinearLayout.VERTICAL
+            gravity=Gravity.CENTER
+            setPadding(dp(70),dp(35),dp(70),dp(35))
+        }
+        box.addView(TextView(this).apply{
+            text="SUPORTE BBL.BOXTV"
+            textSize=30f
+            setTextColor(Color.WHITE)
+            gravity=Gravity.CENTER
+            setTypeface(typeface,Typeface.BOLD)
+        })
+        val qr=ImageView(this).apply{
+            setImageBitmap(qrBitmap("https://wa.me/"+supportWhatsApp,dp(240)))
+            setPadding(dp(10),dp(10),dp(10),dp(10))
+            setBackgroundColor(Color.WHITE)
+        }
+        box.addView(qr,LinearLayout.LayoutParams(dp(270),dp(270)).apply{topMargin=dp(18)})
+        box.addView(TextView(this).apply{
+            text="Entre em contato com o suporte\n"+supportNumber
+            textSize=22f
+            setTextColor(Color.WHITE)
+            gravity=Gravity.CENTER
+            setPadding(0,dp(16),0,dp(16))
+            setTypeface(typeface,Typeface.BOLD)
+        })
+        box.addView(Button(this).apply{
+            text="Voltar"
+            isAllCaps=false
+            setOnClickListener{currentConfig?.let{render(it)}}
+        },LinearLayout.LayoutParams(dp(180),dp(58)))
+        page.addView(box,LinearLayout.LayoutParams(-1,-1))
+    }
+
+    private fun showBlockedScreen(){
+        page.removeAllViews()
+        val box=LinearLayout(this).apply{
+            orientation=LinearLayout.VERTICAL
+            gravity=Gravity.CENTER
+            setPadding(dp(70),dp(28),dp(70),dp(28))
+        }
+        box.addView(TextView(this).apply{
+            text="APARELHO BLOQUEADO\nEntre em contato com o suporte."
+            gravity=Gravity.CENTER
+            textSize=30f
+            setTextColor(Color.WHITE)
+            setTypeface(typeface,Typeface.BOLD)
+        })
+        val qr=ImageView(this).apply{
+            setImageBitmap(qrBitmap("https://wa.me/"+supportWhatsApp,dp(220)))
+            setPadding(dp(10),dp(10),dp(10),dp(10))
+            setBackgroundColor(Color.WHITE)
+        }
+        box.addView(qr,LinearLayout.LayoutParams(dp(250),dp(250)).apply{topMargin=dp(18)})
+        box.addView(TextView(this).apply{
+            text=supportNumber
+            textSize=24f
+            setTextColor(Color.WHITE)
+            gravity=Gravity.CENTER
+            setPadding(0,dp(14),0,0)
+            setTypeface(typeface,Typeface.BOLD)
+        })
+        page.addView(box,LinearLayout.LayoutParams(-1,-1))
+    }
+
     private fun showAppStore(){
         page.removeAllViews()
         val header=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL;gravity=Gravity.CENTER_VERTICAL}
@@ -338,10 +449,22 @@ class MainActivity : Activity() {
                 setOnClickListener{if(installed)launchPackage(app.packageName)else requestInstall(app)}
             }
             card.addView(TextView(this).apply{text="ILIMITADO";gravity=Gravity.CENTER;textSize=12f;setTextColor(Color.rgb(30,25,35));setTypeface(typeface,Typeface.BOLD);background=GradientDrawable().apply{setColor(Color.rgb(255,190,70));cornerRadius=dp(8).toFloat()}},LinearLayout.LayoutParams(-1,dp(28)))
-            card.addView(TextView(this).apply{
-                text=app.label.take(2).uppercase();gravity=Gravity.CENTER;textSize=24f;setTextColor(Color.WHITE);setTypeface(typeface,Typeface.BOLD)
+            val appIcon=ImageView(this).apply{
+                scaleType=ImageView.ScaleType.FIT_CENTER
+                setPadding(dp(5),dp(5),dp(5),dp(5))
                 background=GradientDrawable().apply{shape=GradientDrawable.OVAL;setColor(Color.rgb(38,105,255))}
-            },LinearLayout.LayoutParams(dp(66),dp(66)).apply{topMargin=dp(12)})
+                if(installed){
+                    try{setImageDrawable(packageManager.getApplicationIcon(app.packageName))}catch(_:Exception){}
+                }
+            }
+            if(appIcon.drawable!=null){
+                card.addView(appIcon,LinearLayout.LayoutParams(dp(78),dp(78)).apply{topMargin=dp(10)})
+            }else{
+                card.addView(TextView(this).apply{
+                    text=app.label.take(2).uppercase();gravity=Gravity.CENTER;textSize=24f;setTextColor(Color.WHITE);setTypeface(typeface,Typeface.BOLD)
+                    background=appIcon.background
+                },LinearLayout.LayoutParams(dp(78),dp(78)).apply{topMargin=dp(10)})
+            }
             card.addView(TextView(this).apply{text=app.label+"\n"+if(installed)"ABRIR" else "INSTALAR";gravity=Gravity.CENTER;textSize=15f;setTextColor(Color.WHITE);setPadding(0,dp(8),0,0)},LinearLayout.LayoutParams(-1,dp(70)))
             row.addView(card,LinearLayout.LayoutParams(dp(190),dp(185)).apply{rightMargin=dp(12)})
         }
