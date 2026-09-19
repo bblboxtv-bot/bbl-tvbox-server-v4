@@ -14,8 +14,8 @@ android {
         applicationId = "com.bbl.boxtv.launcher"
         minSdk = 21
         targetSdk = 35
-        versionCode = 15
-        versionName = "2.4.1"
+        versionCode = 16
+        versionName = "2.5.0"
         buildConfigField("String", "API_BASE_URL", "\"${apiBaseUrl.trimEnd('/')}\"")
     }
 
@@ -35,4 +35,9 @@ android {
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
+}
+
+
+dependencies {
+    implementation("com.google.zxing:core:3.5.3")
 }
