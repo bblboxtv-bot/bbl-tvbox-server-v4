@@ -199,7 +199,7 @@ class MainActivity : Activity() {
 
         apps.firstOrNull{
             val s=normalizeName(it.label+" "+it.packageName)
-            s.contains("stvesporte") || s.contains("stvfutebol") || (s.contains("stv") && (s.contains("esporte") || s.contains("futebol")))
+            it.packageName.equals("com.bx.sport.live9",true) || s.contains("stvesporte") || s.contains("stvfutebol") || (s.contains("stv") && (s.contains("esporte") || s.contains("futebol")))
         }?.let{if(result.none{r->r.packageName==it.packageName})result.add(it)}
         return result
     }
@@ -222,7 +222,7 @@ class MainActivity : Activity() {
 
         val stv=apps.firstOrNull{
             val s=normalizeName(it.label+" "+it.packageName)
-            s.contains("stvesporte") || s.contains("stvfutebol") || (s.contains("stv") && (s.contains("esporte") || s.contains("futebol")))
+            it.packageName.equals("com.bx.sport.live9",true) || s.contains("stvesporte") || s.contains("stvfutebol") || (s.contains("stv") && (s.contains("esporte") || s.contains("futebol")))
         }
 
         row.addView(buildFavoriteCard(uni,"UniTV Free","UN"),LinearLayout.LayoutParams(dp(260),dp(350)).apply{rightMargin=dp(18)})
