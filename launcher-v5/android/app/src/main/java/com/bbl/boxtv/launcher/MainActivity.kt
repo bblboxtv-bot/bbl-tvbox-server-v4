@@ -178,13 +178,19 @@ class MainActivity : Activity() {
             val s=normalizeName(app.label+" "+app.packageName)
             return s.contains("unitv")
         }
-        fun isTudo(app:RemoteApp):Boolean{
+        fun isTudoNovo(app:RemoteApp):Boolean{
+            val pkg=app.packageName.lowercase(Locale.ROOT)
             val s=normalizeName(app.label+" "+app.packageName)
-            return s.contains("tudoliberado") || (s.contains("tudo") && s.contains("acesso"))
+            return pkg=="com.rtxapps.reuse" || pkg.startsWith("com.rtxapps.reuse.") ||
+                s.contains("tudoliberado") || (s.contains("tudo") && !s.contains("acesso"))
         }
         val result=mutableListOf<RemoteApp>()
         apps.firstOrNull{isUni(it)}?.let{result.add(it)}
-        apps.firstOrNull{isTudo(it)}?.let{if(result.none{r->r.packageName==it.packageName})result.add(it)}
+        apps.firstOrNull{
+            val pkg=it.packageName.lowercase(Locale.ROOT)
+            pkg=="com.rtxapps.reuse" || pkg.startsWith("com.rtxapps.reuse.")
+        }?.let{if(result.none{r->r.packageName==it.packageName})result.add(it)}
+          ?: apps.firstOrNull{isTudoNovo(it)}?.let{if(result.none{r->r.packageName==it.packageName})result.add(it)}
         return result
     }
 
@@ -197,12 +203,15 @@ class MainActivity : Activity() {
 
         val uni=apps.firstOrNull{normalizeName(it.label+" "+it.packageName).contains("unitv")}
         val tudo=apps.firstOrNull{
+            val pkg=it.packageName.lowercase(Locale.ROOT)
+            pkg=="com.rtxapps.reuse" || pkg.startsWith("com.rtxapps.reuse.")
+        } ?: apps.firstOrNull{
             val s=normalizeName(it.label+" "+it.packageName)
-            s.contains("tudoliberado") || (s.contains("tudo") && s.contains("acesso"))
+            s.contains("tudoliberado") || (s.contains("tudo") && !s.contains("acesso"))
         }
 
-        row.addView(buildFavoriteCard(uni,"UniTV Free","UN"),LinearLayout.LayoutParams(dp(260),dp(175)).apply{rightMargin=dp(18)})
-        row.addView(buildFavoriteCard(tudo,"Tudo Liberado Acesso","TL"),LinearLayout.LayoutParams(dp(300),dp(175)))
+        row.addView(buildFavoriteCard(uni,"UniTV Free","UN"),LinearLayout.LayoutParams(dp(260),dp(350)).apply{rightMargin=dp(18)})
+        row.addView(buildFavoriteCard(tudo,"Tudo Liberado","TL"),LinearLayout.LayoutParams(dp(300),dp(350)))
         return row
     }
 
@@ -226,7 +235,7 @@ class MainActivity : Activity() {
                     shape=GradientDrawable.OVAL
                     setColor(if(initials=="UN") Color.rgb(44,145,255) else Color.rgb(255,128,38))
                 }
-            },LinearLayout.LayoutParams(dp(70),dp(70)))
+            },LinearLayout.LayoutParams(dp(105),dp(105)))
 
             addView(TextView(this@MainActivity).apply{
                 text=(app?.label?:fallbackLabel)+"\n"+when{
@@ -239,7 +248,7 @@ class MainActivity : Activity() {
                 setTextColor(Color.WHITE)
                 setTypeface(typeface,Typeface.BOLD)
                 setPadding(0,dp(8),0,0)
-            },LinearLayout.LayoutParams(-1,dp(72)))
+            },LinearLayout.LayoutParams(-1,dp(150)))
 
             if(app!=null){
                 setOnClickListener{
