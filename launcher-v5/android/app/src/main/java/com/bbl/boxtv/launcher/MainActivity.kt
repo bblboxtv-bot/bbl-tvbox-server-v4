@@ -25,6 +25,7 @@ import android.os.Bundle
 import android.provider.Settings
 import android.view.Gravity
 import android.view.View
+import android.view.KeyEvent
 import android.widget.*
 import java.io.File
 import java.text.SimpleDateFormat
@@ -56,6 +57,21 @@ class MainActivity : Activity() {
         status.text = "Conectando ao painel..."
         tickClock()
         if (savedToken().isBlank()) showActivation() else sync()
+    }
+
+    override fun dispatchKeyEvent(event:KeyEvent):Boolean {
+        if(event.action==KeyEvent.ACTION_DOWN){
+            val blocked = when(event.keyCode){
+                KeyEvent.KEYCODE_SETTINGS,
+                KeyEvent.KEYCODE_MENU,
+                KeyEvent.KEYCODE_TV_CONTENTS_MENU,
+                KeyEvent.KEYCODE_GUIDE,
+                KeyEvent.KEYCODE_INFO -> true
+                else -> false
+            }
+            if(blocked) return true
+        }
+        return super.dispatchKeyEvent(event)
     }
 
     override fun onBackPressed() {
