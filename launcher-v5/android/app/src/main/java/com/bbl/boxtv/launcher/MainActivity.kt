@@ -446,7 +446,7 @@ class MainActivity : Activity() {
             val card=LinearLayout(this).apply{
                 orientation=LinearLayout.VERTICAL;gravity=Gravity.CENTER;setPadding(dp(10),dp(6),dp(10),dp(10));background=panelBg(14);isFocusable=true
                 setOnFocusChangeListener{v,h->v.scaleX=if(h)1.06f else 1f;v.scaleY=if(h)1.06f else 1f}
-                setOnClickListener{if(installed)launchPackage(app.packageName)else requestInstall(app)}
+                setOnClickListener{if(!installed)requestInstall(app)}
             }
             card.addView(TextView(this).apply{text="ILIMITADO";gravity=Gravity.CENTER;textSize=12f;setTextColor(Color.rgb(30,25,35));setTypeface(typeface,Typeface.BOLD);background=GradientDrawable().apply{setColor(Color.rgb(255,190,70));cornerRadius=dp(8).toFloat()}},LinearLayout.LayoutParams(-1,dp(28)))
             val appIcon=ImageView(this).apply{
@@ -465,7 +465,7 @@ class MainActivity : Activity() {
                     background=appIcon.background
                 },LinearLayout.LayoutParams(dp(78),dp(78)).apply{topMargin=dp(10)})
             }
-            card.addView(TextView(this).apply{text=app.label+"\n"+if(installed)"ABRIR" else "INSTALAR";gravity=Gravity.CENTER;textSize=15f;setTextColor(Color.WHITE);setPadding(0,dp(8),0,0)},LinearLayout.LayoutParams(-1,dp(70)))
+            card.addView(TextView(this).apply{text=app.label+"\n"+if(installed)"INSTALADO" else "INSTALAR";gravity=Gravity.CENTER;textSize=15f;setTextColor(Color.WHITE);setPadding(0,dp(8),0,0)},LinearLayout.LayoutParams(-1,dp(70)))
             row.addView(card,LinearLayout.LayoutParams(dp(190),dp(185)).apply{rightMargin=dp(12)})
         }
         scroll.addView(row)
