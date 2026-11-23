@@ -303,12 +303,12 @@ async function refresh(){
 </script></body></html>"""
 
 
-@app.get("/launcher", response_class=HTMLResponse)
-def launcher_checkout_page():
-    return HTMLResponse(CHECKOUT_PAGE)
+def register_pages(app):
+    @app.get("/launcher", response_class=HTMLResponse)
+    def launcher_checkout_page():
+        return HTMLResponse(CHECKOUT_PAGE)
 
-
-@app.get("/atendimento", response_class=HTMLResponse)
-def customer_service_page():
-    page = Path(__file__).with_name("atendimento.html")
-    return HTMLResponse(page.read_text(encoding="utf-8"))
+    @app.get("/atendimento", response_class=HTMLResponse)
+    def customer_service_page():
+        page = Path(__file__).with_name("atendimento.html")
+        return HTMLResponse(page.read_text(encoding="utf-8"))
