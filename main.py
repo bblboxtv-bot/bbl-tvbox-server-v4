@@ -70,7 +70,7 @@ def health(): return {'ok':True,'service':'bbl-boxtv-manager','version':'4.0.0'}
 def enroll(b:EnrollBody):
     key=b.activationCode or b.activation or b.activation_code or b.enrollmentKey
     if not key: raise HTTPException(400,'activation key required')
-    c=db_connect(); cur=execute(c,'SELECT key,reseller_id FROM activation_keys WHERE key=? AND enabled=1',(key,)); kr=rowd(cur.fetchone(),cur)
+    c=db_connect(); cur=execute(c,'SELECT key,reseller_id,single_use,used_by_device FROM activation_keys WHERE key=? AND enabled=1',(key,)); kr=rowd(cur.fetchone(),cur)
     if not kr: c.close(); raise HTTPException(403,'invalid activation key')
     did=b.deviceId or b.device_id or secrets.token_hex(5).upper()
     if kr.get('single_use'):
