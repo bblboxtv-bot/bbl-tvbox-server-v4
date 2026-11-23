@@ -18,7 +18,8 @@ def is_postgres(): return DATABASE_URL.startswith(('postgres://','postgresql://'
 def db_connect():
     if is_postgres():
         import psycopg
-        return psycopg.connect(DATABASE_URL.replace('postgres://','postgresql://',1),autocommit=False)
+        from psycopg.rows import dict_row
+        return psycopg.connect(DATABASE_URL.replace('postgres://','postgresql://',1),autocommit=False,row_factory=dict_row)
     import sqlite3
     p=DATABASE_URL.replace('sqlite:///','',1) if DATABASE_URL.startswith('sqlite:///') else DATABASE_URL
     c=sqlite3.connect(p); c.row_factory=sqlite3.Row; return c
