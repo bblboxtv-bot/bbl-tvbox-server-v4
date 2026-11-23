@@ -95,7 +95,7 @@
         <p class="checkout-error" id="checkoutError" role="alert"></p>
       </div>
     </section>
-    <p class="note">Atendimento online da BBL Box TV. Para compras da BBL Launcher, o Pix é gerado pelo Mercado Pago e o código aparece após a confirmação.</p>
+    <p class="note">Suporte oficial por telefone e WhatsApp: (21) 98851-0594. Para ligações, toque em “Ligar”; para mensagens, toque em “WhatsApp” e confirme o envio no aplicativo.</p>
     <div class="notice"><strong>Ofertas:</strong> aluguel de TV Box por R$70 a cada 30 dias; IPTV remoto por R$35/mês, com teste grátis de 6 horas; BBL Launcher com os aplicativos da oferta incluídos.</div>
   </main>
   <script>
@@ -103,6 +103,8 @@
     const quick = document.querySelector('#quick');
     const input = document.querySelector('#reply');
     let nextAfterText = null;
+    let currentFlow = 'menu';
+    let supportMessage = '';
     const flows = {
       menu: {
         bot: 'Olá! Você está falando com a BBL Box TV. O IPTV é atendido remotamente no Brasil e no exterior. A instalação de TV Box é feita em São Gonçalo, Niterói, Maricá e Itaboraí.\n\nO que você procura?',
@@ -165,16 +167,16 @@
         options: [['','Voltar ao menu','menu'],['','Falar com suporte','support']]
       },
       support: {
-        bot: 'Vou localizar um atendente da sua região. Escreva sua cidade, bairro e o que aconteceu. A conversa continua aqui pelo WhatsApp.',
-        options: [['','Voltar ao menu','menu']]
+        bot: 'O suporte oficial da BBL Box TV atende pelo telefone e WhatsApp (21) 98851-0594. Escolha uma opção para falar diretamente com a equipe.',
+        options: [['','Ligar para o suporte','callSupport'],['','Abrir WhatsApp','whatsappSupport'],['','Escrever mensagem','supportText'],['','Voltar ao menu','menu']]
       },
       supportReply: {
-        bot: 'Recebi as informações. Estou encaminhando sua conversa para o suporte da região. Aguarde por aqui; o atendente responde nesta mesma conversa assim que estiver disponível.',
-        options: [['','Voltar ao menu','menu'],['','Acrescentar informação','support']]
+        bot: 'Sua mensagem não é enviada automaticamente por esta página. Toque em “Enviar pelo WhatsApp” e confirme o envio no WhatsApp para a equipe receber.',
+        options: [['','Enviar pelo WhatsApp','whatsappSupport'],['','Ligar para o suporte','callSupport'],['','Acrescentar informação','supportText'],['','Voltar ao menu','menu']]
       },
       human: {
-        bot: 'Certo. Escreva seu nome, cidade, bairro e o que precisa. Vou localizar um atendente da região para continuar com você nesta conversa.',
-        options: [['','Voltar ao menu','menu']]
+        bot: 'Conte o que você precisa e escolha como falar diretamente com a equipe BBL.',
+        options: [['','Ligar para o suporte','callSupport'],['','Abrir WhatsApp','whatsappSupport'],['','Voltar ao menu','menu']]
       }
     };
     function addMessage(text, who='bot') {
@@ -187,7 +189,8 @@
     function show(key, includeBot=true) {
       const flow=flows[key] || flows.human;
       if(includeBot) addMessage(flow.bot);
-      nextAfterText = key === 'address' ? 'scheduleTime' : (key === 'launcher' ? 'launcherCheck' : (key === 'support' || key === 'human' ? 'supportReply' : null));
+      currentFlow = key;
+      nextAfterText = key === 'address' ? 'scheduleTime' : (key === 'launcher' ? 'launcherCheck' : (key === 'support' || key === 'supportText' || key === 'human' ? 'supportReply' : null));
       quick.replaceChildren();
       for(const [n,label,next] of flow.options) {
         const b=document.createElement('button'); b.type='button'; b.className='choice';
@@ -195,6 +198,11 @@
         b.append(document.createTextNode(label)); b.addEventListener('click',()=>{
           addMessage(label,'user');
           if(next==='payLauncher'){ openLauncherCheckout(); return; }
+          if(next==='callSupport'){ window.location.href='tel:+5521988510594'; return; }
+          if(next==='whatsappSupport'){
+            const message=supportMessage ? 'Olá, BBL Box TV. Preciso de suporte: '+supportMessage : 'Olá, BBL Box TV. Preciso falar com o suporte.';
+            window.location.href='https://wa.me/5521988510594?text='+encodeURIComponent(message); return;
+          }
           show(next);
         }); quick.append(b);
       }
@@ -278,8 +286,22 @@
     document.querySelector('#form').addEventListener('submit',e=>{
       e.preventDefault(); const value=input.value.trim(); if(!value)return;
       const next=nextAfterText; nextAfterText=null; addMessage(value,'user'); input.value='';
-      if(next==='launcherCheck') sessionStorage.setItem('bbl_device_model',value);
-      if(next) show(next); else addMessage('Recebi sua mensagem. Você pode continuar por aqui, voltar ao menu ou pedir suporte a qualquer momento.');
+      if(next==='launcherCheck'){ sessionStorage.setItem('bbl_device_model',value); show(next); }
+      else if(next==='supportReply'){ supportMessage=value; show(next); }
+      else if(next) show(next);
+      else {
+        const normalized=value.toLocaleLowerCase('pt-BR').normalize('NFD').replace(/[\\u0300-\\u036f]/g,'');
+        let intent=null;
+        if(/suporte|atendente|ajuda|problema|falar com alguem/.test(normalized)) intent='support';
+        else if(/cancelar|cancelamento/.test(normalized)) intent='cancel';
+        else if(/renovar|renovacao|ja sou cliente/.test(normalized)) intent='client';
+        else if(/alugar|aluguel|locacao|tv box/.test(normalized)) intent='box';
+        else if(/iptv|smart tv|teste/.test(normalized)) intent='smart';
+        else if(/launcher/.test(normalized)) intent='launcher';
+        else if(/^(oi|ola|bom dia|boa tarde|boa noite|menu)[!. ]*$/.test(normalized)) intent='menu';
+        if(intent) show(intent);
+        else addMessage('Posso ajudar com aluguel de TV Box, IPTV, BBL Launcher, renovação ou suporte. Escreva uma dessas opções ou toque em um botão.');
+      }
     });
     document.querySelector('#restart').addEventListener('click',()=>{chat.replaceChildren();show('menu')});
     show('menu');
