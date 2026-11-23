@@ -40,3 +40,15 @@ A instalação/atualização de APK deve respeitar as permissões e políticas d
 - Nova aba **Ativações** no painel.
 - Geração automática de códigos no formato `BBL-XXXX-XXXX`.
 - Possibilidade de criar código personalizado e ativar/desativar códigos existentes.
+
+
+## Checkout Pix da BBL Launcher
+
+- Página do cliente: `/launcher`
+- Criar pedido: `POST /api/store/orders` com `customer_name`, `whatsapp` e `device_model`.
+- Consultar pagamento: `GET /api/store/orders/{order_id}?token={order_token}`.
+- Webhook do Mercado Pago: `/api/store/mercadopago/webhook`.
+- O valor é fixo no servidor em R$ 20,00. Após confirmação consultada no Mercado Pago, o sistema cria um código de ativação de uso único.
+- Configure `MERCADO_PAGO_ACCESS_TOKEN` como segredo no ambiente do serviço Render. Configure também `MERCADO_PAGO_WEBHOOK_SECRET` se a assinatura estiver ativa no painel do Mercado Pago e `MERCADO_PAGO_PAYER_EMAIL` se quiser substituir o e-mail padrão.
+- A URL do webhook é montada a partir do endereço público da requisição que cria o Pix. Cadastre `https://<dominio-do-servico>/api/store/mercadopago/webhook` como URL de notificações de pagamento no Mercado Pago.
+- O fluxo de compra permanece indisponível com resposta 503 enquanto o token não estiver configurado. A chave de acesso nunca deve ir para o HTML ou navegador.

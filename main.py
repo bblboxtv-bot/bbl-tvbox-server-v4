@@ -36,14 +36,14 @@ def addcol(c,stmt):
 def init_db():
     c=db_connect()
     execute(c,"""CREATE TABLE IF NOT EXISTS devices(id TEXT PRIMARY KEY,token TEXT UNIQUE NOT NULL,activation_key TEXT,locked INTEGER NOT NULL DEFAULT 0,allowed_apps TEXT NOT NULL DEFAULT '[]',managed_apps TEXT NOT NULL DEFAULT '[]',display_name TEXT NOT NULL DEFAULT '',notes TEXT NOT NULL DEFAULT '',created_at TEXT,last_seen TEXT)""")
-    execute(c,"""CREATE TABLE IF NOT EXISTS activation_keys(key TEXT PRIMARY KEY,enabled INTEGER NOT NULL DEFAULT 1,label TEXT NOT NULL DEFAULT '',created_at TEXT)""")
+    execute(c,"""CREATE TABLE IF NOT EXISTS activation_keys(key TEXT PRIMARY KEY,enabled INTEGER NOT NULL DEFAULT 1,label TEXT NOT NULL DEFAULT '',created_at TEXT,single_use INTEGER NOT NULL DEFAULT 0,used_by_device TEXT)""")
     execute(c,"""CREATE TABLE IF NOT EXISTS apps(id TEXT PRIMARY KEY,name TEXT NOT NULL,package_name TEXT NOT NULL DEFAULT '',version_name TEXT NOT NULL DEFAULT '',version_code TEXT NOT NULL DEFAULT '',filename TEXT NOT NULL,size_bytes INTEGER NOT NULL DEFAULT 0,sha256 TEXT NOT NULL DEFAULT '',created_at TEXT)""")
     execute(c,"""CREATE TABLE IF NOT EXISTS layouts(id TEXT PRIMARY KEY,name TEXT NOT NULL,app_ids TEXT NOT NULL DEFAULT '[]',created_at TEXT)""")
     execute(c,"""CREATE TABLE IF NOT EXISTS notifications(id TEXT PRIMARY KEY,device_id TEXT,title TEXT,message TEXT,created_at TEXT,read_at TEXT)""")
     execute(c,"""CREATE TABLE IF NOT EXISTS logs(id TEXT PRIMARY KEY,device_id TEXT,event TEXT,detail TEXT,created_at TEXT)""")
     execute(c,"""CREATE TABLE IF NOT EXISTS resellers(id TEXT PRIMARY KEY,name TEXT NOT NULL,access_key TEXT UNIQUE NOT NULL,enabled INTEGER NOT NULL DEFAULT 1,max_devices INTEGER NOT NULL DEFAULT 50,brand_name TEXT NOT NULL DEFAULT 'BBL.BOXTV',wallpaper_url TEXT NOT NULL DEFAULT '',logo_url TEXT NOT NULL DEFAULT '',message TEXT NOT NULL DEFAULT '',created_at TEXT)""")
     c.commit()
-    for s in ["ALTER TABLE devices ADD COLUMN display_name TEXT NOT NULL DEFAULT ''","ALTER TABLE devices ADD COLUMN notes TEXT NOT NULL DEFAULT ''","ALTER TABLE devices ADD COLUMN expires_at TEXT","ALTER TABLE devices ADD COLUMN launcher_expires_at TEXT","ALTER TABLE devices ADD COLUMN layout_id TEXT","ALTER TABLE devices ADD COLUMN manufacturer TEXT NOT NULL DEFAULT ''","ALTER TABLE devices ADD COLUMN model TEXT NOT NULL DEFAULT ''","ALTER TABLE devices ADD COLUMN android_version TEXT NOT NULL DEFAULT ''","ALTER TABLE devices ADD COLUMN launcher_version TEXT NOT NULL DEFAULT ''","ALTER TABLE activation_keys ADD COLUMN label TEXT NOT NULL DEFAULT ''","ALTER TABLE activation_keys ADD COLUMN created_at TEXT","ALTER TABLE activation_keys ADD COLUMN reseller_id TEXT","ALTER TABLE devices ADD COLUMN reseller_id TEXT","ALTER TABLE devices ADD COLUMN brand_name TEXT NOT NULL DEFAULT ''","ALTER TABLE devices ADD COLUMN wallpaper_url TEXT NOT NULL DEFAULT ''","ALTER TABLE devices ADD COLUMN logo_url TEXT NOT NULL DEFAULT ''","ALTER TABLE devices ADD COLUMN message TEXT NOT NULL DEFAULT ''"]: addcol(c,s)
+    for s in ["ALTER TABLE devices ADD COLUMN display_name TEXT NOT NULL DEFAULT ''","ALTER TABLE devices ADD COLUMN notes TEXT NOT NULL DEFAULT ''","ALTER TABLE devices ADD COLUMN expires_at TEXT","ALTER TABLE devices ADD COLUMN launcher_expires_at TEXT","ALTER TABLE devices ADD COLUMN layout_id TEXT","ALTER TABLE devices ADD COLUMN manufacturer TEXT NOT NULL DEFAULT ''","ALTER TABLE devices ADD COLUMN model TEXT NOT NULL DEFAULT ''","ALTER TABLE devices ADD COLUMN android_version TEXT NOT NULL DEFAULT ''","ALTER TABLE devices ADD COLUMN launcher_version TEXT NOT NULL DEFAULT ''","ALTER TABLE activation_keys ADD COLUMN label TEXT NOT NULL DEFAULT ''","ALTER TABLE activation_keys ADD COLUMN created_at TEXT","ALTER TABLE activation_keys ADD COLUMN single_use INTEGER NOT NULL DEFAULT 0","ALTER TABLE activation_keys ADD COLUMN used_by_device TEXT","ALTER TABLE activation_keys ADD COLUMN reseller_id TEXT","ALTER TABLE devices ADD COLUMN reseller_id TEXT","ALTER TABLE devices ADD COLUMN brand_name TEXT NOT NULL DEFAULT ''","ALTER TABLE devices ADD COLUMN wallpaper_url TEXT NOT NULL DEFAULT ''","ALTER TABLE devices ADD COLUMN logo_url TEXT NOT NULL DEFAULT ''","ALTER TABLE devices ADD COLUMN message TEXT NOT NULL DEFAULT ''"]: addcol(c,s)
     try: execute(c,'INSERT INTO activation_keys(key,enabled,label,created_at) VALUES(?,?,?,?)',(DEFAULT_ACTIVATION_KEY,1,'Chave padrão',now_iso())); c.commit()
     except Exception:c.rollback()
     c.close()
@@ -70,9 +70,17 @@ def health(): return {'ok':True,'service':'bbl-boxtv-manager','version':'4.0.0'}
 def enroll(b:EnrollBody):
     key=b.activationCode or b.activation or b.activation_code or b.enrollmentKey
     if not key: raise HTTPException(400,'activation key required')
-    c=db_connect(); cur=execute(c,'SELECT key,reseller_id FROM activation_keys WHERE key=? AND enabled=1',(key,)); kr=rowd(cur.fetchone(),cur)
+    c=db_connect(); cur=execute(c,'SELECT key,reseller_id,single_use,used_by_device FROM activation_keys WHERE key=? AND enabled=1',(key,)); kr=rowd(cur.fetchone(),cur)
     if not kr: c.close(); raise HTTPException(403,'invalid activation key')
-    did=b.deviceId or b.device_id or secrets.token_hex(5).upper(); cur=execute(c,'SELECT * FROM devices WHERE id=?',(did,)); r=rowd(cur.fetchone(),cur)
+    did=b.deviceId or b.device_id or secrets.token_hex(5).upper()
+    if kr.get('single_use'):
+        used_by = kr.get('used_by_device')
+        if used_by and used_by != did:
+            c.close(); raise HTTPException(409,'activation key already used')
+        cur=execute(c,'UPDATE activation_keys SET used_by_device=? WHERE key=? AND (used_by_device IS NULL OR used_by_device=?)',(did,key,did))
+        if cur.rowcount != 1:
+            c.close(); raise HTTPException(409,'activation key already used')
+    cur=execute(c,'SELECT * FROM devices WHERE id=?',(did,)); r=rowd(cur.fetchone(),cur)
     if r: token=r['token']; execute(c,'UPDATE devices SET last_seen=? WHERE id=?',(now_iso(),did))
     else:
         token=secrets.token_urlsafe(32); execute(c,'INSERT INTO devices(id,token,activation_key,created_at,last_seen,manufacturer,model,android_version,launcher_version,reseller_id) VALUES(?,?,?,?,?,?,?,?,?,?)',(did,token,key,now_iso(),now_iso(),b.manufacturer or '',b.model or '',b.android_version or '',b.launcher_version or '',kr.get('reseller_id'))); log(c,did,'enroll','device activated')
@@ -305,3 +313,9 @@ def reseller_device_toggle(did:str,token:str):
     if not d: c.close(); raise HTTPException(404)
     execute(c,'UPDATE devices SET locked=? WHERE id=?',(0 if d['locked'] else 1,did)); c.commit(); c.close()
     return RedirectResponse(f'/revenda?token={token}',303)
+
+
+# Public checkout for the BBL Launcher; Mercado Pago credentials stay in server env vars.
+import store_payments
+store_payments.register(app, db_connect, execute, rowd, now_iso, log)
+store_payments.register_pages(app)
