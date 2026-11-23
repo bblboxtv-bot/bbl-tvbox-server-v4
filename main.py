@@ -318,3 +318,4 @@ def reseller_device_toggle(did:str,token:str):
 # Public checkout for the BBL Launcher; Mercado Pago credentials stay in server env vars.
 import store_payments
 store_payments.register(app, db_connect, execute, rowd, now_iso, log)
+store_payments.register_pages(app)
