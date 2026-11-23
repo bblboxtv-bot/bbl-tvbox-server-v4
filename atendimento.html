@@ -37,6 +37,20 @@
     .link { border:0;background:none;color:#d8e2ef;text-decoration:underline;text-underline-offset:3px;font-size:13px;padding:4px }
     .note { text-align:center;color:#a9b6c8;font-size:12px;margin:13px 9px 0 }
     .notice { color:#dbe4f0;background:#16283d;border:1px solid #ffffff18;border-radius:12px;padding:10px 12px;font-size:12px;margin-top:14px }
+    .checkout { display:none; position:fixed; inset:0; z-index:20; background:#030813eF; place-items:center; padding:14px }
+    .checkout[aria-hidden="false"] { display:grid }
+    .checkout-card { width:min(100%,460px); max-height:94vh; overflow:auto; background:#101d2c; border:1px solid #ffffff24; border-radius:20px; padding:20px; box-shadow:0 24px 70px #000a }
+    .checkout-head { display:flex; align-items:center; justify-content:space-between; gap:12px }
+    .checkout-head h2 { margin:0; font-size:20px }
+    .checkout-close { width:auto; margin:0; padding:8px 12px; background:#24354b; color:var(--text); border:1px solid #ffffff22; border-radius:9px }
+    .checkout-field { display:block; margin:12px 0 5px; font-size:13px; color:#d9e2ef }
+    .checkout input { width:100%; flex:auto; padding:12px; border:1px solid #ffffff2b; border-radius:10px; background:#17263a; color:white; font:inherit }
+    .checkout-action { width:100%; border:0; border-radius:11px; padding:13px; margin-top:14px; background:var(--gold); color:#1b1c20; font:inherit; font-weight:800 }
+    .checkout-error { color:#ffaaaa; margin:10px 0 0 }
+    .checkout-qr { display:block; max-width:220px; width:100%; margin:14px auto; border-radius:12px; background:white; padding:8px }
+    .checkout-pix { width:100%; min-height:82px; padding:10px; border:1px solid #ffffff25; border-radius:10px; background:#17263a; color:white; resize:vertical }
+    .checkout-status { text-align:center; padding:12px; border-radius:10px; background:#17263a; margin:14px 0 }
+    .checkout-success { color:#a9f2c8 }
     @keyframes pop { from { opacity:0;transform:translateY(4px) } to { opacity:1;transform:none } }
     @media(max-width:420px) { body { padding:12px } .chat { height:54vh;min-height:330px } }
   </style>
@@ -60,6 +74,26 @@
         <button class="send" type="submit" aria-label="Enviar">➤</button>
       </form>
       <div class="actions"><button class="link" id="restart" type="button">Voltar ao menu</button><span class="subtitle">BBL Box TV</span></div>
+    </section>
+    <section class="checkout" id="launcherCheckout" aria-hidden="true" aria-label="Compra da BBL Launcher">
+      <div class="checkout-card">
+        <div class="checkout-head"><h2>BBL Launcher • R$20,00</h2><button class="checkout-close" id="checkoutClose" type="button">Voltar ao atendimento</button></div>
+        <p class="subtitle">Aluguel de TV Box, IPTV e BBL Launcher continuam no mesmo atendimento. O Pix será gerado pelo Mercado Pago.</p>
+        <div id="checkoutForm">
+          <label class="checkout-field" for="checkoutName">Seu nome</label><input id="checkoutName" autocomplete="name">
+          <label class="checkout-field" for="checkoutPhone">WhatsApp com DDD</label><input id="checkoutPhone" inputmode="tel" autocomplete="tel" placeholder="(21) 99999-9999">
+          <label class="checkout-field" for="checkoutModel">Marca e modelo da TV Box</label><input id="checkoutModel" placeholder="Ex.: MXQ Pro 4K">
+          <button class="checkout-action" id="checkoutPay" type="button">Gerar Pix</button>
+        </div>
+        <section id="checkoutPayment" hidden>
+          <h3>Pagamento Pix</h3><img id="checkoutQr" class="checkout-qr" alt="QR Code Pix">
+          <p class="subtitle">Escaneie o QR Code ou copie o código abaixo.</p><textarea id="checkoutPix" class="checkout-pix" readonly></textarea>
+          <button class="checkout-action" id="checkoutCopy" type="button">Copiar código Pix</button>
+          <div id="checkoutStatus" class="checkout-status" aria-live="polite">Aguardando pagamento…</div>
+          <div id="checkoutActivation" hidden></div>
+        </section>
+        <p class="checkout-error" id="checkoutError" role="alert"></p>
+      </div>
     </section>
     <p class="note">Atendimento online da BBL Box TV. Para compras da BBL Launcher, o Pix é gerado pelo Mercado Pago e o código aparece após a confirmação.</p>
     <div class="notice"><strong>Ofertas:</strong> aluguel de TV Box por R$70 a cada 30 dias; IPTV remoto por R$35/mês, com teste grátis de 6 horas; BBL Launcher por R$20, com os aplicativos da oferta incluídos.</div>
@@ -103,7 +137,7 @@
         options: [['2','Ver IPTV para Smart TV','smart'],['','Voltar ao início','menu']]
       },
       smart: {
-        bot: 'O IPTV funciona por link e custa R$35 por mês. Atendemos no Brasil e no exterior. Não precisa de instalação presencial: enviamos pelo WhatsApp o link do aplicativo correto e as instruções. Depois que instalar, o atendimento solicita automaticamente o teste grátis de 6 horas ao painel SearchDefense.\n\nEm qual aparelho você vai usar?',
+        bot: 'O IPTV funciona por link e custa R$35 por mês. Atendemos no Brasil e no exterior. Não precisa de instalação presencial: enviamos pelo WhatsApp o link do aplicativo correto e as instruções. Depois que instalar, envie o identificador ao suporte pelo WhatsApp para solicitar o teste grátis de 6 horas.\n\nEm qual aparelho você vai usar?',
         options: [['','Smart TV','device'],['','TV Box própria','device'],['','Celular ou outro aparelho','device'],['','Voltar ao início','menu']]
       },
       launcher: {
@@ -119,7 +153,7 @@
         options: [['','Quero pedir o teste','trial'],['','Voltar ao início','menu']]
       },
       trial: {
-        bot: 'Certo. Envie o identificador que aparecer no aplicativo instalado. No atendimento conectado, o sistema consulta o SearchDefense, solicita o teste de 6 horas e retorna a confirmação pelo WhatsApp.',
+        bot: 'Certo. Envie o identificador que aparecer no aplicativo instalado. Envie o identificador ao suporte pelo WhatsApp para solicitar o teste de 6 horas.',
         options: [['','Voltar ao menu','menu'],['','Falar com suporte','support']]
       },
       client: {
@@ -160,11 +194,86 @@
         if(n){const badge=document.createElement('span');badge.textContent=n+'.';b.append(badge)}
         b.append(document.createTextNode(label)); b.addEventListener('click',()=>{
           addMessage(label,'user');
-          if(next==='payLauncher'){ window.location.href='/launcher'; return; }
+          if(next==='payLauncher'){ openLauncherCheckout(); return; }
           show(next);
         }); quick.append(b);
       }
       chat.scrollTop=chat.scrollHeight;
+    }
+    const launcherCheckout = document.querySelector('#launcherCheckout');
+    let launcherOrder = null, launcherTimer = null;
+    function openLauncherCheckout() {
+      try { document.querySelector('#checkoutModel').value = sessionStorage.getItem('bbl_device_model') || ''; } catch (_) {}
+      launcherCheckout.setAttribute('aria-hidden','false');
+    }
+    function closeLauncherCheckout() {
+      launcherCheckout.setAttribute('aria-hidden','true');
+      if (launcherTimer) { clearInterval(launcherTimer); launcherTimer = null; }
+    }
+    document.querySelector('#checkoutClose').addEventListener('click',closeLauncherCheckout);
+    launcherCheckout.addEventListener('click',e=>{ if(e.target===launcherCheckout) closeLauncherCheckout(); });
+    async function checkoutJson(response) {
+      const raw=await response.text();
+      try { return raw ? JSON.parse(raw) : {}; }
+      catch (_) { throw new Error('O servidor não conseguiu gerar o Pix agora. Tente novamente em instantes.'); }
+    }
+    document.querySelector('#checkoutPay').addEventListener('click',async()=>{
+      const error=document.querySelector('#checkoutError');
+      const payButton=document.querySelector('#checkoutPay');
+      error.textContent='';
+      const data={
+        customer_name:document.querySelector('#checkoutName').value.trim(),
+        whatsapp:document.querySelector('#checkoutPhone').value.trim(),
+        device_model:document.querySelector('#checkoutModel').value.trim()
+      };
+      if(Object.values(data).some(value=>!value)){
+        error.textContent='Preencha seu nome, WhatsApp e modelo do aparelho.';
+        return;
+      }
+      payButton.disabled=true; payButton.textContent='Gerando Pix…';
+      try {
+        const response=await fetch('/api/store/orders',{
+          method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)
+        });
+        const result=await checkoutJson(response);
+        if(!response.ok) throw new Error(typeof result.detail==='string'?result.detail:'Não foi possível gerar o Pix.');
+        launcherOrder=result;
+        document.querySelector('#checkoutForm').hidden=true;
+        document.querySelector('#checkoutPayment').hidden=false;
+        document.querySelector('#checkoutPix').value=result.qr_code || '';
+        const qr=document.querySelector('#checkoutQr');
+        if(result.qr_code_base64){qr.src='data:image/png;base64,'+result.qr_code_base64;qr.hidden=false;}else{qr.hidden=true;}
+        launcherTimer=setInterval(refreshLauncherOrder,4000);
+        refreshLauncherOrder();
+      } catch(errorValue) {
+        error.textContent=errorValue.message || 'Não foi possível gerar o Pix.';
+        payButton.disabled=false;payButton.textContent='Gerar Pix';
+      }
+    });
+    document.querySelector('#checkoutCopy').addEventListener('click',async()=>{
+      try { await navigator.clipboard.writeText(document.querySelector('#checkoutPix').value);document.querySelector('#checkoutCopy').textContent='Pix copiado'; }
+      catch (_) { document.querySelector('#checkoutError').textContent='Selecione e copie o código Pix manualmente.'; }
+    });
+    async function refreshLauncherOrder() {
+      if(!launcherOrder)return;
+      try {
+        const response=await fetch(launcherOrder.status_url+'?token='+encodeURIComponent(launcherOrder.order_token));
+        const status=await checkoutJson(response);
+        if(!response.ok)return;
+        if(status.status==='approved') {
+          if(launcherTimer)clearInterval(launcherTimer);
+          document.querySelector('#checkoutStatus').textContent='Pagamento aprovado!';
+          document.querySelector('#checkoutStatus').classList.add('checkout-success');
+          const activation=document.querySelector('#checkoutActivation');
+          const heading=document.createElement('h3');heading.textContent='Seu código de ativação';
+          const code=document.createElement('div');code.className='checkout-status checkout-success';code.style.fontSize='23px';code.style.fontWeight='850';code.textContent=status.activation_code || '';
+          const note=document.createElement('div');note.className='subtitle';note.textContent='Digite esse código na BBL Launcher no aparelho informado.';
+          activation.replaceChildren(heading,code,note);activation.hidden=false;
+        } else if(['cancelled','rejected','refunded','charged_back'].includes(status.status)) {
+          if(launcherTimer)clearInterval(launcherTimer);
+          document.querySelector('#checkoutStatus').textContent='Este pagamento não foi aprovado. Volte ao atendimento para receber ajuda.';
+        }
+      } catch (_) {}
     }
     document.querySelector('#form').addEventListener('submit',e=>{
       e.preventDefault(); const value=input.value.trim(); if(!value)return;
