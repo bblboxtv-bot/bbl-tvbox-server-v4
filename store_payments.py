@@ -3,6 +3,7 @@ import hashlib
 import hmac
 import json
 import os
+from pathlib import Path
 import secrets
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal, InvalidOperation
@@ -275,6 +276,7 @@ textarea{width:100%;min-height:82px;padding:10px;border:1px solid #ffffff25;bord
 <div id="error" class="error" role="alert"></div></section></main>
 <script>
 const byId=id=>document.getElementById(id);let order=null,timer=null;
+try{const saved=sessionStorage.getItem('bbl_device_model');if(saved)byId('model').value=saved}catch(_){}
 byId("pay").addEventListener("click",async()=>{
   byId("error").textContent="";
   const data={customer_name:byId("name").value.trim(),whatsapp:byId("phone").value.trim(),device_model:byId("model").value.trim()};
@@ -304,3 +306,9 @@ async function refresh(){
 @app.get("/launcher", response_class=HTMLResponse)
 def launcher_checkout_page():
     return HTMLResponse(CHECKOUT_PAGE)
+
+
+@app.get("/atendimento", response_class=HTMLResponse)
+def customer_service_page():
+    page = Path(__file__).with_name("atendimento.html")
+    return HTMLResponse(page.read_text(encoding="utf-8"))
