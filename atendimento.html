@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#09111f">
+  <title>BBL Box TV — atendimento online</title>
+  <style>
+    :root { color-scheme: dark; --bg:#09111f; --panel:#111d2d; --panel2:#17263a; --gold:#f3bd55; --green:#25d366; --text:#f5f7fb; --muted:#a9b6c8; }
+    * { box-sizing:border-box }
+    body { margin:0; min-height:100vh; background:radial-gradient(ellipse at top,#172c49 0,#09111f 52%); color:var(--text); font:16px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif; display:grid; place-items:center; padding:22px }
+    .wrap { width:min(100%,470px) }
+    .brand { text-align:center; margin:0 0 16px }
+    .brand-mark { display:inline-grid; place-items:center; width:48px;height:48px;border-radius:16px;background:linear-gradient(145deg,#f7d58d,#d99125);color:#101827;font-weight:900;font-size:20px;box-shadow:0 8px 24px #0005 }
+    h1 { font-size:21px; margin:9px 0 1px; letter-spacing:.2px }
+    .subtitle { color:var(--muted);font-size:13px }
+    .phone { border:1px solid #ffffff1c; background:#0c1725; border-radius:27px; overflow:hidden; box-shadow:0 24px 70px #0008 }
+    .top { display:flex;align-items:center;gap:12px;padding:14px 17px;background:#142338;border-bottom:1px solid #ffffff12 }
+    .avatar { width:39px;height:39px;border-radius:50%;display:grid;place-items:center;color:#152033;background:var(--gold);font-weight:900 }
+    .name { font-weight:750 }
+    .online { color:#b8c7d9;font-size:12px }
+    .chat { height:min(56vh,510px);min-height:350px;overflow:auto;padding:18px 13px;background:linear-gradient(#0d1928eb,#0d1928eb),radial-gradient(circle at 80% 20%,#24445d,#0d1928);scroll-behavior:smooth }
+    .msg { max-width:88%;padding:11px 13px;margin:0 0 10px;border-radius:15px;background:#192a3d;color:#f3f6fb;white-space:pre-line;box-shadow:0 2px 4px #0002;animation:pop .18s ease-out }
+    .msg.bot { border-top-left-radius:4px }
+    .msg.user { margin-left:auto;background:#145b48;border-top-right-radius:4px }
+    .stamp { display:block;text-align:right;color:#b8c7d9;font-size:10px;margin-top:5px }
+    .quick { display:grid;gap:8px;padding:12px 13px 8px;background:#101d2c }
+    button { color:var(--text);font:inherit;cursor:pointer }
+    .choice { width:100%;text-align:left;border:1px solid #f3bd5550;background:#18283d;border-radius:12px;padding:11px 13px;transition:.15s }
+    .choice:hover,.choice:focus-visible { border-color:var(--gold);background:#21344d;outline:none;transform:translateY(-1px) }
+    .choice span { color:var(--gold);font-weight:800;margin-right:8px }
+    .composer { display:flex;gap:8px;padding:10px 12px 13px;background:#101d2c }
+    input { min-width:0;flex:1;border:1px solid #ffffff20;border-radius:22px;background:#1a2a3d;color:white;padding:11px 14px;font:inherit;outline:none }
+    input:focus { border-color:#25d366 }
+    .send { border:0;border-radius:50%;width:44px;height:44px;background:var(--green);color:#052512;font-size:18px;font-weight:900 }
+    .actions { display:flex;justify-content:space-between;padding:0 13px 13px;background:#101d2c }
+    .link { border:0;background:none;color:#d8e2ef;text-decoration:underline;text-underline-offset:3px;font-size:13px;padding:4px }
+    .note { text-align:center;color:#a9b6c8;font-size:12px;margin:13px 9px 0 }
+    .notice { color:#dbe4f0;background:#16283d;border:1px solid #ffffff18;border-radius:12px;padding:10px 12px;font-size:12px;margin-top:14px }
+    @keyframes pop { from { opacity:0;transform:translateY(4px) } to { opacity:1;transform:none } }
+    @media(max-width:420px) { body { padding:12px } .chat { height:54vh;min-height:330px } }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <header class="brand">
+      <div class="brand-mark">BBL</div>
+      <h1>BBL Box TV</h1>
+      <div class="subtitle">Atendimento online</div>
+    </header>
+    <section class="phone" aria-label="Conversa de atendimento">
+      <div class="top">
+        <div class="avatar">B</div>
+        <div><div class="name">BBL Box TV</div><div class="online">IPTV remoto • Brasil e exterior</div></div>
+      </div>
+      <div class="chat" id="chat" aria-live="polite"></div>
+      <div class="quick" id="quick"></div>
+      <form class="composer" id="form">
+        <input id="reply" autocomplete="off" placeholder="Digite sua resposta…" aria-label="Digite sua resposta">
+        <button class="send" type="submit" aria-label="Enviar">➤</button>
+      </form>
+      <div class="actions"><button class="link" id="restart" type="button">Voltar ao menu</button><span class="subtitle">BBL Box TV</span></div>
+    </section>
+    <p class="note">Atendimento online da BBL Box TV. Para compras da BBL Launcher, o Pix é gerado pelo Mercado Pago e o código aparece após a confirmação.</p>
+    <div class="notice"><strong>Ofertas:</strong> aluguel de TV Box por R$70 a cada 30 dias; IPTV remoto por R$35/mês, com teste grátis de 6 horas; BBL Launcher por R$20, com os aplicativos da oferta incluídos.</div>
+  </main>
+  <script>
+    const chat = document.querySelector('#chat');
+    const quick = document.querySelector('#quick');
+    const input = document.querySelector('#reply');
+    let nextAfterText = null;
+    const flows = {
+      menu: {
+        bot: 'Olá! Você está falando com a BBL Box TV. O IPTV é atendido remotamente no Brasil e no exterior. A instalação de TV Box é feita em São Gonçalo, Niterói, Maricá e Itaboraí.\n\nO que você procura?',
+        options: [['1','Alugar uma TV Box','box'],['2','IPTV para Smart TV','smart'],['3','BBL Launcher — R$20','launcher'],['4','Já sou cliente','client'],['5','Falar com suporte','support']]
+      },
+      box: {
+        bot: 'O aluguel da TV Box custa R$70 por 30 dias. A instalação é grátis e você paga os primeiros R$70 depois que instalarmos. A renovação é R$70 por mês.\n\nNão tem fidelidade. Se cancelar, avise para combinarmos a retirada do aparelho.\n\nEm qual cidade você mora?',
+        options: [['','São Gonçalo','address'],['','Niterói','address'],['','Maricá','address'],['','Itaboraí','address'],['','Outra cidade','outside'],['','Voltar ao início','menu']]
+      },
+      address: {
+        bot: 'Ótimo. Envie seu nome, CEP, rua, número, complemento e um ponto de referência. Depois escolha o melhor período para a instalação no próximo dia útil.',
+        options: [['','Voltar ao início','menu']]
+      },
+      scheduleTime: {
+        bot: 'Qual período do próximo dia útil é melhor para você?',
+        options: [['','De manhã','scheduledMorning'],['','À tarde','scheduledAfternoon'],['','À noite','scheduledNight'],['','Voltar ao início','menu']]
+      },
+      scheduledMorning: {
+        bot: 'Anotei sua preferência por atendimento de manhã no próximo dia útil. Um atendente precisa confirmar o horário por esta conversa.',
+        options: [['','Voltar ao menu','menu'],['','Falar com suporte','support']]
+      },
+      scheduledAfternoon: {
+        bot: 'Anotei sua preferência por atendimento à tarde no próximo dia útil. Um atendente precisa confirmar o horário por esta conversa.',
+        options: [['','Voltar ao menu','menu'],['','Falar com suporte','support']]
+      },
+      scheduledNight: {
+        bot: 'Anotei sua preferência por atendimento à noite no próximo dia útil. Um atendente precisa confirmar o horário por esta conversa.',
+        options: [['','Voltar ao menu','menu'],['','Falar com suporte','support']]
+      },
+      outside: {
+        bot: 'A instalação da TV Box fica limitada a São Gonçalo, Niterói, Maricá e Itaboraí. Se você estiver em outra localidade, posso mostrar a opção de IPTV para Smart TV, atendida por link.',
+        options: [['2','Ver IPTV para Smart TV','smart'],['','Voltar ao início','menu']]
+      },
+      smart: {
+        bot: 'O IPTV funciona por link e custa R$35 por mês. Atendemos no Brasil e no exterior. Não precisa de instalação presencial: enviamos pelo WhatsApp o link do aplicativo correto e as instruções. Depois que instalar, o atendimento solicita automaticamente o teste grátis de 6 horas ao painel SearchDefense.\n\nEm qual aparelho você vai usar?',
+        options: [['','Smart TV','device'],['','TV Box própria','device'],['','Celular ou outro aparelho','device'],['','Voltar ao início','menu']]
+      },
+      launcher: {
+        bot: 'A BBL Launcher custa R$20 e inclui os aplicativos da oferta. Escreva a marca e o modelo da sua TV Box para conferir a compatibilidade antes de pagar.',
+        options: [['','Voltar ao início','menu'],['','Falar com suporte','support']]
+      },
+      launcherCheck: {
+        bot: 'Recebi o modelo. Para comprar, gere seu Pix de R$20 na página segura. Após a confirmação do Mercado Pago, o código de ativação aparece na mesma página.',
+        options: [['','Comprar agora — gerar Pix de R$20','payLauncher'],['','Voltar ao menu','menu'],['','Falar com suporte','support']]
+      },
+      device: {
+        bot: 'Qual é a marca e o modelo do aparelho? Assim enviamos o link e a orientação corretos pelo WhatsApp. Depois que instalar o aplicativo, envie o identificador que aparecer para solicitar o teste de 6 horas ao painel SearchDefense.',
+        options: [['','Quero pedir o teste','trial'],['','Voltar ao início','menu']]
+      },
+      trial: {
+        bot: 'Certo. Envie o identificador que aparecer no aplicativo instalado. No atendimento conectado, o sistema consulta o SearchDefense, solicita o teste de 6 horas e retorna a confirmação pelo WhatsApp.',
+        options: [['','Voltar ao menu','menu'],['','Falar com suporte','support']]
+      },
+      client: {
+        bot: 'Claro! Escolha o assunto para eu encaminhar sua conversa.',
+        options: [['1','Renovar','human'],['2','Ajuda com a TV Box ou aplicativo','human'],['3','Cancelar','cancel'],['4','Falar com uma pessoa','human'],['','Voltar ao início','menu']]
+      },
+      cancel: {
+        bot: 'Sem problema. Para aluguel de TV Box, combinamos a retirada do aparelho. Para IPTV na Smart TV, o serviço é desativado. Vou encaminhar sua solicitação para um atendente.',
+        options: [['','Voltar ao menu','menu'],['','Falar com suporte','support']]
+      },
+      support: {
+        bot: 'Vou localizar um atendente da sua região. Escreva sua cidade, bairro e o que aconteceu. A conversa continua aqui pelo WhatsApp.',
+        options: [['','Voltar ao menu','menu']]
+      },
+      supportReply: {
+        bot: 'Recebi as informações. Estou encaminhando sua conversa para o suporte da região. Aguarde por aqui; o atendente responde nesta mesma conversa assim que estiver disponível.',
+        options: [['','Voltar ao menu','menu'],['','Acrescentar informação','support']]
+      },
+      human: {
+        bot: 'Certo. Escreva seu nome, cidade, bairro e o que precisa. Vou localizar um atendente da região para continuar com você nesta conversa.',
+        options: [['','Voltar ao menu','menu']]
+      }
+    };
+    function addMessage(text, who='bot') {
+      const el = document.createElement('div'); el.className = `msg ${who}`;
+      el.append(document.createTextNode(text));
+      const stamp = document.createElement('span'); stamp.className = 'stamp';
+      stamp.textContent = new Intl.DateTimeFormat('pt-BR',{hour:'2-digit',minute:'2-digit'}).format(new Date());
+      el.append(stamp); chat.append(el); chat.scrollTop = chat.scrollHeight;
+    }
+    function show(key, includeBot=true) {
+      const flow=flows[key] || flows.human;
+      if(includeBot) addMessage(flow.bot);
+      nextAfterText = key === 'address' ? 'scheduleTime' : (key === 'launcher' ? 'launcherCheck' : (key === 'support' || key === 'human' ? 'supportReply' : null));
+      quick.replaceChildren();
+      for(const [n,label,next] of flow.options) {
+        const b=document.createElement('button'); b.type='button'; b.className='choice';
+        if(n){const badge=document.createElement('span');badge.textContent=n+'.';b.append(badge)}
+        b.append(document.createTextNode(label)); b.addEventListener('click',()=>{
+          addMessage(label,'user');
+          if(next==='payLauncher'){ window.location.href='/launcher'; return; }
+          show(next);
+        }); quick.append(b);
+      }
+      chat.scrollTop=chat.scrollHeight;
+    }
+    document.querySelector('#form').addEventListener('submit',e=>{
+      e.preventDefault(); const value=input.value.trim(); if(!value)return;
+      const next=nextAfterText; nextAfterText=null; addMessage(value,'user'); input.value='';
+      if(next==='launcherCheck') sessionStorage.setItem('bbl_device_model',value);
+      if(next) show(next); else addMessage('Recebi sua mensagem. Você pode continuar por aqui, voltar ao menu ou pedir suporte a qualquer momento.');
+    });
+    document.querySelector('#restart').addEventListener('click',()=>{chat.replaceChildren();show('menu')});
+    show('menu');
+  </script>
+</body>
+</html>
