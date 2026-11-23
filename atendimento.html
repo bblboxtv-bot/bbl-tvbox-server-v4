@@ -170,6 +170,10 @@
         bot: 'O suporte oficial da BBL Box TV atende pelo telefone e WhatsApp (21) 98851-0594. Escolha uma opção para falar diretamente com a equipe.',
         options: [['','Ligar para o suporte','callSupport'],['','Abrir WhatsApp','whatsappSupport'],['','Escrever mensagem','supportText'],['','Voltar ao menu','menu']]
       },
+      supportText: {
+        bot: 'Escreva seu nome, WhatsApp, cidade, bairro e o que aconteceu. Depois escolha “Enviar pelo WhatsApp”; o aplicativo abrirá com a mensagem pronta para você confirmar.',
+        options: [['','Voltar ao menu','menu']]
+      },
       supportReply: {
         bot: 'Sua mensagem não é enviada automaticamente por esta página. Toque em “Enviar pelo WhatsApp” e confirme o envio no WhatsApp para a equipe receber.',
         options: [['','Enviar pelo WhatsApp','whatsappSupport'],['','Ligar para o suporte','callSupport'],['','Acrescentar informação','supportText'],['','Voltar ao menu','menu']]
@@ -290,7 +294,7 @@
       else if(next==='supportReply'){ supportMessage=value; show(next); }
       else if(next) show(next);
       else {
-        const normalized=value.toLocaleLowerCase('pt-BR').normalize('NFD').replace(/[\\u0300-\\u036f]/g,'');
+        const normalized=value.toLocaleLowerCase('pt-BR').normalize('NFD').replace(/[\u0300-\u036f]/g,'');
         let intent=null;
         if(/suporte|atendente|ajuda|problema|falar com alguem/.test(normalized)) intent='support';
         else if(/cancelar|cancelamento/.test(normalized)) intent='cancel';
