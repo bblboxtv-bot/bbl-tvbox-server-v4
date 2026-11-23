@@ -284,7 +284,7 @@ byId("pay").addEventListener("click",async()=>{
   byId("pay").disabled=true;byId("pay").textContent="Gerando Pix…";
   try{
     const r=await fetch("/api/store/orders",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(data)});
-    const result=await r.json();if(!r.ok)throw new Error(typeof result.detail==="string"?result.detail:"Não foi possível gerar o Pix.");
+    const raw=await r.text();let result={};try{result=raw?JSON.parse(raw):{}}catch{throw new Error("O servidor não conseguiu gerar o Pix agora. Tente novamente em instantes.")}if(!r.ok)throw new Error(typeof result.detail==="string"?result.detail:"Não foi possível gerar o Pix.");
     order=result;byId("formArea").hidden=true;byId("payment").style.display="block";
     byId("pix").value=result.qr_code;
     if(result.qr_code_base64)byId("qr").src="data:image/png;base64,"+result.qr_code_base64;else byId("qr").hidden=true;
